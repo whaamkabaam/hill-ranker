@@ -13,7 +13,7 @@ const Profile = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col animate-fade-in">
       {/* Header */}
       <header className="glass border-b">
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
@@ -50,8 +50,8 @@ const Profile = () => {
 
         <h2 className="text-3xl font-bold mb-8">Profile Settings</h2>
 
-        <div className="space-y-6">
-          <Card>
+        <div className="space-y-6 animate-scale-in">
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle>Account Information</CardTitle>
               <CardDescription>Your account details</CardDescription>
@@ -83,7 +83,7 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle>Security</CardTitle>
               <CardDescription>Manage your password and security settings</CardDescription>

@@ -38,7 +38,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col animate-fade-in">
       {/* Header */}
       <header className="glass border-b">
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
@@ -96,7 +96,7 @@ const Dashboard = () => {
 
         {/* Admin Panel (only visible to admins) */}
         {isAdmin && (
-          <div className="mb-6 glass rounded-xl p-6 border-2 border-primary/50 hover:border-primary transition-all cursor-pointer group"
+          <div className="mb-6 glass-card rounded-xl p-6 border-2 border-primary/50 hover:border-primary cursor-pointer group animate-scale-in"
                onClick={() => navigate('/admin')}>
             <div className="flex items-start justify-between mb-4">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
@@ -125,7 +125,7 @@ const Dashboard = () => {
         {/* Tools Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Image AI Ranker - Active Tool */}
-          <div className="glass rounded-xl p-6 hover:border-primary/50 transition-all cursor-pointer group"
+          <div className="glass-card rounded-xl p-6 cursor-pointer group hover-lift animate-fade-in"
                onClick={() => navigate('/tools/image-ranker')}>
             <div className="flex items-start justify-between mb-4">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
@@ -153,7 +153,7 @@ const Dashboard = () => {
           </div>
 
           {/* Placeholder Tools */}
-          <div className="glass rounded-xl p-6 opacity-60 cursor-not-allowed">
+          <div className="glass-card rounded-xl p-6 opacity-60 cursor-not-allowed animate-fade-in" style={{ animationDelay: '0.1s' }}>
             <div className="flex items-start justify-between mb-4">
               <div className="w-12 h-12 rounded-lg bg-muted/10 flex items-center justify-center">
                 <Lock className="w-6 h-6 text-muted-foreground" />
@@ -175,7 +175,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="glass rounded-xl p-6 opacity-60 cursor-not-allowed">
+          <div className="glass-card rounded-xl p-6 opacity-60 cursor-not-allowed animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="flex items-start justify-between mb-4">
               <div className="w-12 h-12 rounded-lg bg-muted/10 flex items-center justify-center">
                 <Lock className="w-6 h-6 text-muted-foreground" />

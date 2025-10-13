@@ -41,28 +41,28 @@ const Landing = () => {
 
       {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center px-8 py-20">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border text-sm mb-4">
+        <div className="max-w-4xl mx-auto text-center space-y-8 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border text-sm mb-4 animate-scale-in">
             <Sparkles className="w-4 h-4 text-primary" />
             <span>Internal Tools Platform</span>
           </div>
 
-          <h2 className="text-5xl md:text-6xl font-bold tracking-tight">
+          <h2 className="text-5xl md:text-6xl font-bold tracking-tight animate-fade-in-down">
             HV Capital
             <br />
             <span className="text-primary">Internal Tools</span>
           </h2>
 
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in">
             Powerful internal tools built for the HV Capital team. 
             Streamline workflows, make data-driven decisions, and collaborate efficiently.
           </p>
 
-          <div className="flex items-center justify-center gap-4 pt-4">
+          <div className="flex items-center justify-center gap-4 pt-4 animate-fade-in">
             <Button 
               size="lg" 
               onClick={() => navigate('/auth')}
-              className="gap-2"
+              className="gap-2 hover-lift shadow-lg hover:shadow-xl transition-all"
             >
               Get Started
               <ArrowRight className="w-4 h-4" />
@@ -71,8 +71,8 @@ const Landing = () => {
 
           {/* Feature Grid */}
           <div className="grid md:grid-cols-3 gap-6 pt-16">
-            <div className="glass rounded-xl p-6 text-left">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+            <div className="glass-card rounded-xl p-6 text-left hover-lift animate-fade-in" style={{ animationDelay: '0.1s' }}>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Sparkles className="w-6 h-6 text-primary" />
               </div>
               <h3 className="text-lg font-semibold mb-2">AI-Powered Tools</h3>
@@ -81,8 +81,8 @@ const Landing = () => {
               </p>
             </div>
 
-            <div className="glass rounded-xl p-6 text-left">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+            <div className="glass-card rounded-xl p-6 text-left hover-lift animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <BarChart3 className="w-6 h-6 text-primary" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Data-Driven Insights</h3>
@@ -91,8 +91,8 @@ const Landing = () => {
               </p>
             </div>
 
-            <div className="glass rounded-xl p-6 text-left">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+            <div className="glass-card rounded-xl p-6 text-left hover-lift animate-fade-in" style={{ animationDelay: '0.3s' }}>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Users className="w-6 h-6 text-primary" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Team Collaboration</h3>
