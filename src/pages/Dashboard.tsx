@@ -11,8 +11,16 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
-  const { role, jobTitle, isAdmin, loading: roleLoading } = useUserRole();
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    role,
+    jobTitle,
+    isAdmin,
+    loading: roleLoading
+  } = useUserRole();
   const navigate = useNavigate();
   const [promptCount, setPromptCount] = useState(0);
   useEffect(() => {
@@ -57,13 +65,9 @@ const Dashboard = () => {
             <div className="text-right hidden sm:block">
               <div className="flex items-center gap-2 justify-end">
                 <p className="text-sm font-medium">{getFirstName()}</p>
-                {role && <Badge variant={role === 'admin' ? 'destructive' : role === 'moderator' ? 'default' : 'secondary'} className="text-xs">
-                    {role}
-                  </Badge>}
+                {role}
               </div>
-              {jobTitle && (
-                <p className="text-xs text-muted-foreground">{jobTitle}</p>
-              )}
+              {jobTitle && <p className="text-xs text-muted-foreground">{jobTitle}</p>}
               <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
             <Button variant="ghost" size="sm" onClick={() => navigate('/profile')} className="glass-hover">
@@ -83,11 +87,9 @@ const Dashboard = () => {
           <h2 className="text-3xl font-bold mb-2">
             Welcome back, {getFirstName()} 👋
           </h2>
-          {jobTitle && (
-            <p className="text-lg text-muted-foreground mb-1">
+          {jobTitle && <p className="text-lg text-muted-foreground mb-1">
               {jobTitle}
-            </p>
-          )}
+            </p>}
           <p className="text-muted-foreground">
             Select a tool below to get started
           </p>
