@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SignInForm } from '@/components/auth/SignInForm';
 import { SignUpForm } from '@/components/auth/SignUpForm';
 import { useAuth } from '@/hooks/useAuth';
-import { BackgroundRippleEffect } from '@/components/ui/background-ripple-effect';
+import { DotBackground } from '@/components/ui/dot-background';
 import hvLogo from '@/assets/hv-capital-logo.png';
 const Auth = () => {
   const navigate = useNavigate();
@@ -30,8 +30,8 @@ const Auth = () => {
       </div>;
   }
   return <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
-      {/* Background Ripple Effect */}
-      <BackgroundRippleEffect rows={15} cols={40} cellSize={52} />
+      {/* Dot Background */}
+      <DotBackground />
       
       <motion.div initial={{
       opacity: 0,
