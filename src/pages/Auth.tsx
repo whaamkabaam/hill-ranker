@@ -6,10 +6,12 @@ import { SignInForm } from '@/components/auth/SignInForm';
 import { SignUpForm } from '@/components/auth/SignUpForm';
 import { useAuth } from '@/hooks/useAuth';
 import hvLogo from '@/assets/hv-capital-logo.png';
-
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
   const [activeTab, setActiveTab] = useState('signin');
 
   // Redirect if already authenticated
@@ -18,32 +20,29 @@ const Auth = () => {
       navigate('/');
     }
   }, [user, loading, navigate]);
-
   const handleSuccess = () => {
     navigate('/');
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
+  return <div className="min-h-screen flex items-center justify-center p-4">
+      <motion.div initial={{
+      opacity: 0,
+      y: 20
+    }} animate={{
+      opacity: 1,
+      y: 0
+    }} transition={{
+      duration: 0.5
+    }} className="w-full max-w-md">
         <div className="glass rounded-2xl p-8 space-y-6">
           <div className="flex flex-col items-center space-y-3">
             <img src={hvLogo} alt="HV Capital" className="h-20 object-contain mb-2" />
             <h1 className="text-5xl font-bold text-primary tracking-tight">tools</h1>
-            <p className="text-muted-foreground text-lg">Internal tools for HVC</p>
+            
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -62,8 +61,6 @@ const Auth = () => {
           </Tabs>
         </div>
       </motion.div>
-    </div>
-  );
+    </div>;
 };
-
 export default Auth;
