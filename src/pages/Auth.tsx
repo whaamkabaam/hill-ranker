@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SignInForm } from '@/components/auth/SignInForm';
 import { SignUpForm } from '@/components/auth/SignUpForm';
 import { useAuth } from '@/hooks/useAuth';
+import { BackgroundRippleEffect } from '@/components/ui/background-ripple-effect';
 import hvLogo from '@/assets/hv-capital-logo.png';
 const Auth = () => {
   const navigate = useNavigate();
@@ -28,7 +29,10 @@ const Auth = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>;
   }
-  return <div className="min-h-screen flex items-center justify-center p-4">
+  return <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
+      {/* Background Ripple Effect */}
+      <BackgroundRippleEffect rows={10} cols={30} cellSize={48} />
+      
       <motion.div initial={{
       opacity: 0,
       y: 20
@@ -37,7 +41,7 @@ const Auth = () => {
       y: 0
     }} transition={{
       duration: 0.5
-    }} className="w-full max-w-md">
+    }} className="relative z-10 w-full max-w-md">
         <div className="glass rounded-2xl p-8 space-y-6">
           <div className="flex flex-col items-center space-y-3">
             <img src={hvLogo} alt="HV Capital" className="h-20 object-contain mb-2" />
