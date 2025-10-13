@@ -17,6 +17,7 @@ interface UserWithRole {
   id: string;
   email: string;
   full_name: string | null;
+  job_title: string | null;
   role: string;
   created_at: string;
 }
@@ -50,7 +51,7 @@ export default function AdminPanel() {
     try {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, email, full_name, created_at');
+        .select('id, email, full_name, job_title, created_at');
 
       if (profilesError) throw profilesError;
 
@@ -244,6 +245,7 @@ export default function AdminPanel() {
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Position</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Joined</TableHead>
                 </TableRow>
@@ -253,6 +255,9 @@ export default function AdminPanel() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.email}</TableCell>
                     <TableCell>{user.full_name || 'N/A'}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {user.job_title || 'Not specified'}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={getRoleBadgeVariant(user.role)}>
                         {user.role}

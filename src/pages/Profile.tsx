@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 const Profile = () => {
   const { user, signOut } = useAuth();
-  const { role, loading: roleLoading } = useUserRole();
+  const { role, jobTitle, fullName, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
 
   return (
@@ -58,13 +58,21 @@ const Profile = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
+                <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+                <p className="text-base mt-1">{fullName || 'Not specified'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Position</label>
+                <p className="text-base mt-1">{jobTitle || 'Not specified'}</p>
+              </div>
+              <div>
                 <label className="text-sm font-medium text-muted-foreground">Email</label>
                 <p className="text-base mt-1">{user?.email}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Shield className="w-4 h-4" />
-                  Role
+                  System Role
                 </label>
                 <div className="mt-2">
                   {roleLoading ? (
