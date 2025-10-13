@@ -31,7 +31,7 @@ const Auth = () => {
   }
   return <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
       {/* Background Ripple Effect */}
-      <BackgroundRippleEffect rows={10} cols={30} cellSize={48} />
+      <BackgroundRippleEffect rows={15} cols={40} cellSize={52} />
       
       <motion.div initial={{
       opacity: 0,
