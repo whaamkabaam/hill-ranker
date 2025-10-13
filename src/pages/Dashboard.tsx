@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Sparkles, ArrowRight, Lock, Shield, User as UserIcon } from "lucide-react";
 import { ToolRequestDialog } from "@/components/ToolRequestDialog";
 import hvLogo from "@/assets/hv-capital-logo.png";
+import genpeachLogo from "@/assets/genpeach-logo.jpg";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -118,11 +119,11 @@ const Dashboard = () => {
 
         {/* Tools Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Image AI Ranker - Active Tool */}
+          {/* GenPeach - Active Tool */}
           <div className="glass-card rounded-xl p-6 cursor-pointer group hover-lift animate-fade-in" onClick={() => navigate('/tools/image-ranker')}>
             <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                <Sparkles className="w-6 h-6 text-primary" />
+              <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center p-2">
+                <img src={genpeachLogo} alt="GenPeach" className="w-full h-full object-contain" />
               </div>
               <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
                 Active
@@ -140,31 +141,6 @@ const Dashboard = () => {
                 Launch
                 <ArrowRight className="w-4 h-4" />
               </Button>
-            </div>
-          </div>
-
-          {/* Placeholder Tools */}
-          <div className="glass-card rounded-xl p-6 opacity-60 cursor-not-allowed animate-fade-in" style={{
-          animationDelay: '0.1s'
-        }}>
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-muted/10 flex items-center justify-center">
-                <Lock className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <span className="px-2 py-1 text-xs rounded-full bg-muted/10 text-muted-foreground font-medium">
-                Coming Soon
-              </span>
-            </div>
-
-            <h3 className="text-lg font-semibold mb-2">Tool Name</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              More powerful tools are being developed for the HV Capital team.
-            </p>
-
-            <div className="flex items-center justify-between pt-4 border-t">
-              <span className="text-sm text-muted-foreground">
-                In development
-              </span>
             </div>
           </div>
 
