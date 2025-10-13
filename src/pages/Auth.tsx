@@ -42,7 +42,7 @@ const Auth = () => {
           <div className="flex flex-col items-center space-y-3">
             <img src={hvLogo} alt="HV Capital" className="h-20 object-contain mb-2" />
             
-            <p className="text-muted-foreground text-lg">Internal tools</p>
+            
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
