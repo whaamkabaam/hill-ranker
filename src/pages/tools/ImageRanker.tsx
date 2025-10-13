@@ -22,6 +22,10 @@ interface Image {
   prompt_id: string;
 }
 
+interface ImageWithWins extends Image {
+  wins: number;
+}
+
 const ImageRanker = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -30,7 +34,8 @@ const ImageRanker = () => {
   const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRanking, setShowRanking] = useState(false);
-  const [winners, setWinners] = useState<Image[]>([]);
+  const [winners, setWinners] = useState<ImageWithWins[]>([]);
+  const [startTime, setStartTime] = useState(Date.now());
 
   useEffect(() => {
     loadPrompts();
@@ -74,21 +79,63 @@ const ImageRanker = () => {
     }
   };
 
-  const handleComparisonComplete = (winnerImages: Image[]) => {
+  const handleComparisonComplete = (winnerImages: ImageWithWins[]) => {
     setWinners(winnerImages);
     setShowRanking(true);
   };
 
-  const handleRankingComplete = () => {
+  const handleSkip = () => {
     setShowRanking(false);
     setWinners([]);
     
     if (currentPromptIndex < prompts.length - 1) {
       setCurrentPromptIndex(currentPromptIndex + 1);
-      toast.success("Moving to next prompt!");
+      setStartTime(Date.now());
+      toast.success("Skipped to next prompt");
     } else {
-      toast.success("All prompts completed! 🎉");
-      setCurrentPromptIndex(0);
+      toast.info("This is the last prompt");
+    }
+  };
+
+  const handleRankingComplete = async () => {
+    setShowRanking(false);
+    setWinners([]);
+    
+    // Check for next uncompleted prompt
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: completed } = await supabase
+        .from('prompt_completions')
+        .select('prompt_id')
+        .eq('user_id', user.id);
+
+      const completedIds = new Set(completed?.map(c => c.prompt_id) || []);
+      const nextPrompt = prompts.find(p => !completedIds.has(p.id));
+
+      if (nextPrompt) {
+        const nextIndex = prompts.findIndex(p => p.id === nextPrompt.id);
+        setCurrentPromptIndex(nextIndex);
+        setStartTime(Date.now());
+        toast.success("Moving to next uncompleted prompt!");
+      } else {
+        toast.success("All prompts completed! 🎉");
+        setCurrentPromptIndex(0);
+        setStartTime(Date.now());
+      }
+    } catch (error) {
+      console.error("Error finding next prompt:", error);
+      // Fallback to sequential
+      if (currentPromptIndex < prompts.length - 1) {
+        setCurrentPromptIndex(currentPromptIndex + 1);
+        setStartTime(Date.now());
+        toast.success("Moving to next prompt!");
+      } else {
+        toast.success("All prompts completed! 🎉");
+        setCurrentPromptIndex(0);
+        setStartTime(Date.now());
+      }
     }
   };
 
@@ -162,6 +209,7 @@ const ImageRanker = () => {
           images={images}
           userEmail={user?.email || ''}
           onComplete={handleComparisonComplete}
+          onSkip={handleSkip}
         />
       </div>
 
@@ -170,6 +218,7 @@ const ImageRanker = () => {
         winners={winners}
         promptId={currentPrompt.id}
         userEmail={user?.email || ''}
+        startTime={startTime}
         onComplete={handleRankingComplete}
       />
     </>

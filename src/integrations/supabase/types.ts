@@ -91,6 +91,35 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_completions: {
+        Row: {
+          completed_at: string | null
+          id: string
+          prompt_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          prompt_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          prompt_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_completions_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prompts: {
         Row: {
           created_at: string | null
@@ -114,6 +143,8 @@ export type Database = {
       }
       rankings: {
         Row: {
+          completion_time_seconds: number | null
+          confidence_score: number | null
           created_at: string | null
           first_id: string
           id: string
@@ -127,6 +158,8 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          completion_time_seconds?: number | null
+          confidence_score?: number | null
           created_at?: string | null
           first_id: string
           id?: string
@@ -140,6 +173,8 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          completion_time_seconds?: number | null
+          confidence_score?: number | null
           created_at?: string | null
           first_id?: string
           id?: string
