@@ -14,6 +14,13 @@ interface Image {
 
 interface ImageWithWins extends Image {
   wins: number;
+  elo?: number;
+}
+
+interface ImagePair {
+  left: Image;
+  right: Image;
+  pairId: string;
 }
 
 interface ComparisonViewProps {
@@ -25,6 +32,72 @@ interface ComparisonViewProps {
   onSkip?: () => void;
 }
 
+// Utility: Generate all possible pairs for Round-Robin
+const generateAllPairs = (images: Image[]): ImagePair[] => {
+  const pairs: ImagePair[] = [];
+  for (let i = 0; i < images.length; i++) {
+    for (let j = i + 1; j < images.length; j++) {
+      pairs.push({
+        left: images[i],
+        right: images[j],
+        pairId: `${images[i].id}-${images[j].id}`,
+      });
+    }
+  }
+  return pairs;
+};
+
+// Utility: Calculate Elo ratings from votes
+const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => {
+  const K = 32; // Elo K-factor
+  const ratings: Record<string, number> = {};
+  const wins: Record<string, number> = {};
+
+  // Initialize ratings and wins
+  images.forEach(img => {
+    ratings[img.id] = 1500; // Starting Elo
+    wins[img.id] = 0;
+  });
+
+  // Process each vote to update Elo
+  votes.forEach(vote => {
+    const leftId = vote.left_image_id;
+    const rightId = vote.right_image_id;
+    
+    if (!ratings[leftId] || !ratings[rightId]) return;
+
+    const expectedLeft = 1 / (1 + Math.pow(10, (ratings[rightId] - ratings[leftId]) / 400));
+    const expectedRight = 1 - expectedLeft;
+
+    let actualLeft = 0.5;
+    let actualRight = 0.5;
+
+    if (vote.is_tie) {
+      wins[leftId] += 0.5;
+      wins[rightId] += 0.5;
+    } else if (vote.winner_id === leftId) {
+      actualLeft = 1;
+      actualRight = 0;
+      wins[leftId] += 1;
+    } else if (vote.winner_id === rightId) {
+      actualLeft = 0;
+      actualRight = 1;
+      wins[rightId] += 1;
+    }
+
+    ratings[leftId] += K * (actualLeft - expectedLeft);
+    ratings[rightId] += K * (actualRight - expectedRight);
+  });
+
+  return images
+    .map(img => ({
+      ...img,
+      wins: wins[img.id] || 0,
+      elo: Math.round(ratings[img.id]),
+    }))
+    .sort((a, b) => (b.elo || 0) - (a.elo || 0));
+};
+
 export const ComparisonView = ({
   promptId,
   promptText,
@@ -33,25 +106,36 @@ export const ComparisonView = ({
   onComplete,
   onSkip,
 }: ComparisonViewProps) => {
-  const [king, setKing] = useState<Image | null>(null);
-  const [challenger, setChallenger] = useState<Image | null>(null);
-  const [remainingImages, setRemainingImages] = useState<Image[]>([]);
-  const [completedComparisons, setCompletedComparisons] = useState(0);
+  const [allPairs, setAllPairs] = useState<ImagePair[]>([]);
+  const [currentPairIndex, setCurrentPairIndex] = useState(0);
+  const [completedPairs, setCompletedPairs] = useState<Set<string>>(new Set());
   const [voteHistory, setVoteHistory] = useState<string[]>([]);
-  const [startTime] = useState(Date.now());
   const [isLoading, setIsLoading] = useState(true);
 
-  const totalComparisons = images.length > 0 ? images.length - 1 : 0;
+  const totalComparisons = allPairs.length;
+  const currentPair = allPairs[currentPairIndex] || null;
 
-  // Check for existing votes on load
+  // Initialize pairs and check for existing votes
   useEffect(() => {
-    const checkExistingVotes = async () => {
-      if (images.length === 0) return;
+    const initializePairs = async () => {
+      if (images.length < 2) {
+        toast.error("Need at least 2 images to compare");
+        setIsLoading(false);
+        return;
+      }
+
+      // Generate all possible pairs
+      const pairs = generateAllPairs(images);
+      setAllPairs(pairs);
 
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
 
+        // Fetch existing votes
         const { data: existingVotes } = await supabase
           .from('votes')
           .select('*')
@@ -59,48 +143,67 @@ export const ComparisonView = ({
           .eq('user_id', user.id);
 
         if (existingVotes && existingVotes.length > 0) {
-          if (existingVotes.length >= totalComparisons) {
-            // Already completed - calculate rankings and skip to modal
-            const rankedImages = await calculateRankingsFromVotes(existingVotes);
-            onComplete(rankedImages);
-            return;
-          } else {
-            toast.info(`Resuming: ${existingVotes.length} of ${totalComparisons} comparisons completed`);
-            setCompletedComparisons(existingVotes.length);
-            setVoteHistory(existingVotes.map(v => v.id));
+          // Build completed pairs set
+          const completed = new Set<string>();
+          existingVotes.forEach(vote => {
+            const pairId1 = `${vote.left_image_id}-${vote.right_image_id}`;
+            const pairId2 = `${vote.right_image_id}-${vote.left_image_id}`;
+            completed.add(pairId1);
+            completed.add(pairId2);
+          });
+          
+          setCompletedPairs(completed);
+          setVoteHistory(existingVotes.map(v => v.id));
+
+          // Check if all pairs are completed
+          if (existingVotes.length >= pairs.length) {
+            console.log('✅ All pairs completed, calculating rankings...');
+            const rankedImages = calculateEloRatings(images, existingVotes);
+            const top3 = rankedImages.slice(0, 3);
+            
+            if (top3.length >= 3) {
+              onComplete(top3);
+              return;
+            }
+          }
+
+          // Find next uncompleted pair
+          const nextPairIndex = pairs.findIndex(p => !completed.has(p.pairId));
+          if (nextPairIndex !== -1) {
+            setCurrentPairIndex(nextPairIndex);
+            toast.info(`Resuming: ${existingVotes.length} of ${pairs.length} comparisons completed`);
           }
         }
 
-        // Initialize comparison
-        setKing(images[0]);
-        setRemainingImages(images.slice(1));
         setIsLoading(false);
       } catch (error) {
-        console.error("Error checking existing votes:", error);
+        console.error("Error initializing pairs:", error);
+        toast.error("Failed to load comparison state");
         setIsLoading(false);
       }
     };
 
-    checkExistingVotes();
+    initializePairs();
   }, [images, promptId]);
 
+  // Check for completion after each vote
   useEffect(() => {
-    if (remainingImages.length > 0 && king) {
-      setChallenger(remainingImages[0]);
-    } else if (king && remainingImages.length === 0 && challenger === null && !isLoading) {
-      // Tournament complete
-      handleTournamentComplete();
-    }
-  }, [remainingImages, king, challenger, isLoading]);
+    if (isLoading || allPairs.length === 0) return;
 
+    if (completedPairs.size >= allPairs.length) {
+      handleComparisonComplete();
+    }
+  }, [completedPairs, allPairs, isLoading]);
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = async (e: KeyboardEvent) => {
-      if (!king || !challenger) return;
+      if (!currentPair) return;
 
       if (e.key.toLowerCase() === "a") {
-        await handleSelection(king);
+        await handleSelection(currentPair.left);
       } else if (e.key.toLowerCase() === "l") {
-        await handleSelection(challenger);
+        await handleSelection(currentPair.right);
       } else if (e.key.toLowerCase() === "t") {
         await handleTie();
       }
@@ -108,49 +211,11 @@ export const ComparisonView = ({
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [king, challenger]);
+  }, [currentPair]);
 
-  const calculateRankingsFromVotes = async (votes: any[]): Promise<ImageWithWins[]> => {
+  const handleComparisonComplete = async () => {
     try {
-      console.log('📊 Calculating rankings from votes:', votes.length, 'votes');
-      
-      const winCounts: Record<string, number> = {};
-
-      votes.forEach(vote => {
-        if (vote.is_tie) {
-          winCounts[vote.left_image_id] = (winCounts[vote.left_image_id] || 0) + 0.5;
-          winCounts[vote.right_image_id] = (winCounts[vote.right_image_id] || 0) + 0.5;
-        } else if (vote.winner_id) {
-          winCounts[vote.winner_id] = (winCounts[vote.winner_id] || 0) + 1;
-        }
-      });
-
-      console.log('📊 Win counts:', winCounts);
-
-      const rankedImages = images
-        .map(img => ({ ...img, wins: winCounts[img.id] || 0 }))
-        .sort((a, b) => b.wins - a.wins)
-        .slice(0, 3);
-
-      console.log('🏆 Top 3 ranked images:', rankedImages);
-
-      if (rankedImages.length < 3) {
-        console.error('❌ Not enough images to rank! Only got:', rankedImages.length);
-        toast.error('Not enough images to create a ranking');
-        return [];
-      }
-
-      return rankedImages;
-    } catch (error) {
-      console.error('❌ Error calculating rankings:', error);
-      toast.error('Failed to calculate rankings');
-      return [];
-    }
-  };
-
-  const handleTournamentComplete = async () => {
-    try {
-      console.log('🏁 Tournament complete, fetching votes...');
+      console.log('🏁 All comparisons complete, calculating Elo rankings...');
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -166,28 +231,48 @@ export const ComparisonView = ({
 
       console.log('📊 All votes fetched:', allVotes?.length || 0);
 
-      if (allVotes && allVotes.length > 0) {
-        const rankedImages = await calculateRankingsFromVotes(allVotes);
+      if (allVotes && allVotes.length >= allPairs.length) {
+        // Validate all pairs completed
+        const votedPairs = new Set<string>();
+        allVotes.forEach(vote => {
+          votedPairs.add(`${vote.left_image_id}-${vote.right_image_id}`);
+        });
+
+        const missingPairs = allPairs.filter(p => !votedPairs.has(p.pairId));
+        if (missingPairs.length > 0) {
+          console.warn('⚠️ Missing pairs:', missingPairs.length);
+          toast.error(`Missing ${missingPairs.length} comparisons. Please complete all pairs.`);
+          return;
+        }
+
+        const rankedImages = calculateEloRatings(images, allVotes);
+        const top3 = rankedImages.slice(0, 3);
         
-        if (rankedImages.length >= 3) {
-          console.log('✅ Calling onComplete with:', rankedImages);
-          onComplete(rankedImages);
+        console.log('🏆 Top 3 by Elo:', top3.map(img => ({ 
+          model: img.model_name, 
+          elo: img.elo, 
+          wins: img.wins 
+        })));
+
+        if (top3.length >= 3) {
+          console.log('✅ Calling onComplete with:', top3);
+          onComplete(top3);
         } else {
           console.error('❌ Not enough ranked images');
           toast.error('Unable to generate rankings');
         }
       } else {
-        console.error('❌ No votes found');
-        toast.error('No votes found to calculate rankings');
+        console.error('❌ Insufficient votes');
+        toast.error('Not all comparisons completed');
       }
     } catch (error) {
-      console.error("❌ Error completing tournament:", error);
+      console.error("❌ Error completing comparison:", error);
       toast.error("Failed to calculate rankings");
     }
   };
 
   const handleSelection = async (winner: Image) => {
-    if (!king || !challenger) return;
+    if (!currentPair) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -200,8 +285,8 @@ export const ComparisonView = ({
         prompt_id: promptId,
         user_email: userEmail,
         user_id: user.id,
-        left_image_id: king.id,
-        right_image_id: challenger.id,
+        left_image_id: currentPair.left.id,
+        right_image_id: currentPair.right.id,
         winner_id: winner.id,
         is_tie: false,
       }).select().single();
@@ -209,18 +294,10 @@ export const ComparisonView = ({
       if (error) throw error;
 
       setVoteHistory(prev => [...prev, data.id]);
-      setCompletedComparisons(prev => prev + 1);
+      setCompletedPairs(prev => new Set([...prev, currentPair.pairId]));
 
-      if (winner.id === king.id) {
-        // King stays, move to next challenger
-        setRemainingImages(remainingImages.slice(1));
-        setChallenger(null);
-      } else {
-        // Challenger becomes new king
-        setKing(challenger);
-        setRemainingImages(remainingImages.slice(1));
-        setChallenger(null);
-      }
+      // Move to next uncompleted pair
+      moveToNextPair();
     } catch (error) {
       console.error("Error saving vote:", error);
       toast.error("Failed to save vote");
@@ -228,7 +305,7 @@ export const ComparisonView = ({
   };
 
   const handleTie = async () => {
-    if (!king || !challenger) return;
+    if (!currentPair) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -241,8 +318,8 @@ export const ComparisonView = ({
         prompt_id: promptId,
         user_email: userEmail,
         user_id: user.id,
-        left_image_id: king.id,
-        right_image_id: challenger.id,
+        left_image_id: currentPair.left.id,
+        right_image_id: currentPair.right.id,
         winner_id: null,
         is_tie: true,
       }).select().single();
@@ -250,14 +327,29 @@ export const ComparisonView = ({
       if (error) throw error;
 
       setVoteHistory(prev => [...prev, data.id]);
-      setCompletedComparisons(prev => prev + 1);
+      setCompletedPairs(prev => new Set([...prev, currentPair.pairId]));
 
-      // King stays on tie
-      setRemainingImages(remainingImages.slice(1));
-      setChallenger(null);
+      // Move to next uncompleted pair
+      moveToNextPair();
     } catch (error) {
       console.error("Error saving tie:", error);
       toast.error("Failed to save tie");
+    }
+  };
+
+  const moveToNextPair = () => {
+    const nextIndex = allPairs.findIndex((p, idx) => 
+      idx > currentPairIndex && !completedPairs.has(p.pairId)
+    );
+
+    if (nextIndex !== -1) {
+      setCurrentPairIndex(nextIndex);
+    } else {
+      // Check from beginning for any missed pairs
+      const firstIncomplete = allPairs.findIndex(p => !completedPairs.has(p.pairId));
+      if (firstIncomplete !== -1) {
+        setCurrentPairIndex(firstIncomplete);
+      }
     }
   };
 
@@ -287,7 +379,7 @@ export const ComparisonView = ({
     }
   };
 
-  if (isLoading || !king || !challenger) {
+  if (isLoading || !currentPair) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-muted-foreground">Loading comparison...</p>
@@ -307,25 +399,29 @@ export const ComparisonView = ({
           
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Comparisons</span>
-              <span className="font-medium">{completedComparisons} / {totalComparisons}</span>
+              <span className="text-muted-foreground">Round-Robin Progress</span>
+              <span className="font-medium">{completedPairs.size} / {totalComparisons}</span>
             </div>
-            <Progress value={(completedComparisons / totalComparisons) * 100} />
+            <Progress value={(completedPairs.size / totalComparisons) * 100} />
+            <p className="text-xs text-muted-foreground text-center">
+              Every image compared against every other image
+            </p>
           </div>
         </div>
 
         {/* Comparison */}
         <div className="flex gap-8 items-start">
           <ImageCard
-            imageUrl={king.image_url}
-            modelName={king.model_name}
+            imageUrl={currentPair.left.image_url}
+            modelName={currentPair.left.model_name}
             side="left"
-            isKing={true}
+            isKing={false}
           />
           <ImageCard
-            imageUrl={challenger.image_url}
-            modelName={challenger.model_name}
+            imageUrl={currentPair.right.image_url}
+            modelName={currentPair.right.model_name}
             side="right"
+            isKing={false}
           />
         </div>
 
@@ -333,7 +429,7 @@ export const ComparisonView = ({
         <div className="glass rounded-xl p-6 space-y-4">
           <div className="flex justify-center items-center gap-4">
             <Button
-              onClick={() => handleSelection(king)}
+              onClick={() => handleSelection(currentPair.left)}
               variant="outline"
               size="lg"
               className="glass-hover"
@@ -349,7 +445,7 @@ export const ComparisonView = ({
               T - Tie
             </Button>
             <Button
-              onClick={() => handleSelection(challenger)}
+              onClick={() => handleSelection(currentPair.right)}
               variant="outline"
               size="lg"
               className="glass-hover"
