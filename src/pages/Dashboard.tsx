@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, ArrowRight, Lock, Shield, User as UserIcon } from "lucide-react";
+import { ToolRequestDialog } from "@/components/ToolRequestDialog";
 import hvLogo from "@/assets/hv-capital-logo.png";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,7 +35,11 @@ const Dashboard = () => {
 
   const getFirstName = () => {
     if (!user?.email) return "User";
-    return user.email.split('@')[0];
+    const emailPrefix = user.email.split('@')[0];
+    // Split by dot and take first part (handles felix.holtkamp -> felix)
+    const firstName = emailPrefix.split('.')[0];
+    // Capitalize first letter
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1);
   };
 
   return (
@@ -175,27 +180,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="glass-card rounded-xl p-6 opacity-60 cursor-not-allowed animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-muted/10 flex items-center justify-center">
-                <Lock className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <span className="px-2 py-1 text-xs rounded-full bg-muted/10 text-muted-foreground font-medium">
-                Coming Soon
-              </span>
-            </div>
-
-            <h3 className="text-lg font-semibold mb-2">Tool Name</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              More powerful tools are being developed for the HV Capital team.
-            </p>
-
-            <div className="flex items-center justify-between pt-4 border-t">
-              <span className="text-sm text-muted-foreground">
-                In development
-              </span>
-            </div>
-          </div>
+          <ToolRequestDialog />
         </div>
       </main>
 
