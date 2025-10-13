@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { AuthGate } from "@/components/AuthGate";
 import { ComparisonView } from "@/components/ComparisonView";
 import { RankingModal } from "@/components/RankingModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 import hvLogo from "@/assets/hv-capital-logo.png";
 
 interface Prompt {
@@ -22,7 +21,7 @@ interface Image {
 }
 
 const Index = () => {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { user, signOut } = useAuth();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
   const [images, setImages] = useState<Image[]>([]);
@@ -31,10 +30,8 @@ const Index = () => {
   const [winners, setWinners] = useState<Image[]>([]);
 
   useEffect(() => {
-    if (userEmail) {
-      loadPrompts();
-    }
-  }, [userEmail]);
+    loadPrompts();
+  }, []);
 
   useEffect(() => {
     if (prompts.length > 0) {
@@ -92,10 +89,6 @@ const Index = () => {
     }
   };
 
-  if (!userEmail) {
-    return <AuthGate onAuthenticated={setUserEmail} />;
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -129,11 +122,11 @@ const Index = () => {
           </div>
           
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{userEmail}</span>
+            <span className="text-sm text-muted-foreground">{user?.email}</span>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setUserEmail(null)}
+              onClick={signOut}
               className="glass-hover"
             >
               Sign Out
@@ -148,7 +141,7 @@ const Index = () => {
           promptId={currentPrompt.id}
           promptText={currentPrompt.text}
           images={images}
-          userEmail={userEmail}
+          userEmail={user?.email || ''}
           onComplete={handleComparisonComplete}
         />
       </div>
@@ -157,7 +150,7 @@ const Index = () => {
         open={showRanking}
         winners={winners}
         promptId={currentPrompt.id}
-        userEmail={userEmail}
+        userEmail={user?.email || ''}
         onComplete={handleRankingComplete}
       />
     </>

@@ -43,9 +43,12 @@ export const RankingModal = ({
 
     setSubmitting(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       await supabase.from("rankings").insert({
         prompt_id: promptId,
         user_email: userEmail,
+        user_id: user?.id,
         first_id: rankings[0].id,
         second_id: rankings[1].id,
         third_id: rankings[2].id,

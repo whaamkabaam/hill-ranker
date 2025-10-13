@@ -64,6 +64,30 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       prompts: {
         Row: {
           created_at: string | null
@@ -97,6 +121,7 @@ export type Database = {
           second_id: string
           third_id: string
           user_email: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -109,6 +134,7 @@ export type Database = {
           second_id: string
           third_id: string
           user_email: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -121,6 +147,7 @@ export type Database = {
           second_id?: string
           third_id?: string
           user_email?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -162,6 +189,7 @@ export type Database = {
           prompt_id: string
           right_image_id: string
           user_email: string
+          user_id: string | null
           winner_id: string | null
         }
         Insert: {
@@ -172,6 +200,7 @@ export type Database = {
           prompt_id: string
           right_image_id: string
           user_email: string
+          user_id?: string | null
           winner_id?: string | null
         }
         Update: {
@@ -182,6 +211,7 @@ export type Database = {
           prompt_id?: string
           right_image_id?: string
           user_email?: string
+          user_id?: string | null
           winner_id?: string | null
         }
         Relationships: [
@@ -220,7 +250,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_email_allowed: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

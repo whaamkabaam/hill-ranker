@@ -68,9 +68,12 @@ export const ComparisonView = ({
     if (!king || !challenger) return;
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       await supabase.from("votes").insert({
         prompt_id: promptId,
         user_email: userEmail,
+        user_id: user?.id,
         left_image_id: king.id,
         right_image_id: challenger.id,
         winner_id: winner.id,
@@ -107,9 +110,12 @@ export const ComparisonView = ({
     if (!king || !challenger) return;
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       await supabase.from("votes").insert({
         prompt_id: promptId,
         user_email: userEmail,
+        user_id: user?.id,
         left_image_id: king.id,
         right_image_id: challenger.id,
         winner_id: null,
