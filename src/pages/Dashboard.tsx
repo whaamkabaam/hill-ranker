@@ -123,8 +123,8 @@ const Dashboard = () => {
           {/* GenPeach - Active Tool */}
           <div className="glass-card rounded-xl p-6 cursor-pointer group hover-lift animate-fade-in" onClick={() => navigate('/tools/image-ranker')}>
             <div className="flex items-start justify-between mb-4">
-              <div className="w-16 h-16 rounded-lg bg-white flex items-center justify-center p-3">
-                <img src={genpeachLogo} alt="GenPeach" className="w-full h-full object-contain" />
+              <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center">
+                <img src={genpeachLogo} alt="GenPeach" className="w-full h-full object-cover" />
               </div>
               <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
                 Active
