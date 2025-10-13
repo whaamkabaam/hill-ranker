@@ -362,6 +362,19 @@ export const ComparisonView = ({
     try {
       const lastVoteId = voteHistory[voteHistory.length - 1];
       
+      // Get the vote details before deleting
+      const { data: voteToUndo } = await supabase
+        .from('votes')
+        .select('*')
+        .eq('id', lastVoteId)
+        .single();
+
+      if (!voteToUndo) {
+        toast.error("Vote not found");
+        return;
+      }
+
+      // Delete the vote
       const { error } = await supabase
         .from('votes')
         .delete()
@@ -369,10 +382,23 @@ export const ComparisonView = ({
 
       if (error) throw error;
 
-      toast.success("Last vote undone");
+      // Update state without reload
+      setVoteHistory(prev => prev.slice(0, -1));
       
-      // Reload the page to reset state properly
-      window.location.reload();
+      const undoneePairId = `${voteToUndo.left_image_id}-${voteToUndo.right_image_id}`;
+      setCompletedPairs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(undoneePairId);
+        return newSet;
+      });
+
+      // Move back to the undone pair
+      const pairIndex = allPairs.findIndex(p => p.pairId === undoneePairId);
+      if (pairIndex !== -1) {
+        setCurrentPairIndex(pairIndex);
+      }
+
+      toast.success("Last vote undone");
     } catch (error) {
       console.error("Error undoing vote:", error);
       toast.error("Failed to undo vote");

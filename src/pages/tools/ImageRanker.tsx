@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { ComparisonView } from "@/components/ComparisonView";
 import { RankingModal } from "@/components/RankingModal";
+import { PromptProgress } from "@/components/PromptProgress";
+import { ReviewRankings } from "@/components/ReviewRankings";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import hvLogo from "@/assets/hv-capital-logo.png";
-import { ArrowLeft, Home } from "lucide-react";
+import { ArrowLeft, Home, BarChart3, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Prompt {
@@ -36,6 +39,7 @@ const ImageRanker = () => {
   const [showRanking, setShowRanking] = useState(false);
   const [winners, setWinners] = useState<ImageWithWins[]>([]);
   const [startTime, setStartTime] = useState(Date.now());
+  const [activeTab, setActiveTab] = useState<string>("ranking");
 
   useEffect(() => {
     loadPrompts();
@@ -210,16 +214,45 @@ const ImageRanker = () => {
         </div>
       </div>
 
-      <div className="pt-20">
-        <ComparisonView
-          key={currentPrompt.id}
-          promptId={currentPrompt.id}
-          promptText={currentPrompt.text}
-          images={images}
-          userEmail={user?.email || ''}
-          onComplete={handleComparisonComplete}
-          onSkip={handleSkip}
-        />
+      <div className="pt-20 p-8">
+        <div className="max-w-7xl mx-auto">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-8">
+              <TabsTrigger value="ranking" className="gap-2">
+                <Home className="w-4 h-4" />
+                Ranking
+              </TabsTrigger>
+              <TabsTrigger value="progress" className="gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Progress
+              </TabsTrigger>
+              <TabsTrigger value="history" className="gap-2">
+                <History className="w-4 h-4" />
+                History
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="ranking">
+              <ComparisonView
+                key={currentPrompt.id}
+                promptId={currentPrompt.id}
+                promptText={currentPrompt.text}
+                images={images}
+                userEmail={user?.email || ''}
+                onComplete={handleComparisonComplete}
+                onSkip={handleSkip}
+              />
+            </TabsContent>
+
+            <TabsContent value="progress">
+              <PromptProgress userId={user?.id || ''} />
+            </TabsContent>
+
+            <TabsContent value="history">
+              <ReviewRankings userId={user?.id || ''} />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
 
       <RankingModal
