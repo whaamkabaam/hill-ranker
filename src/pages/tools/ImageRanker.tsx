@@ -80,6 +80,15 @@ const ImageRanker = () => {
   };
 
   const handleComparisonComplete = (winnerImages: ImageWithWins[]) => {
+    console.log('📊 ImageRanker received winners:', winnerImages);
+    
+    if (!winnerImages || winnerImages.length < 3) {
+      console.error('❌ Invalid winner images:', winnerImages);
+      toast.error(`Not enough winners to rank (got ${winnerImages?.length || 0}, need 3)`);
+      return;
+    }
+    
+    console.log('✅ Setting winners and showing ranking modal');
     setWinners(winnerImages);
     setShowRanking(true);
   };

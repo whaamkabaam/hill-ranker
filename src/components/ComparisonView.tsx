@@ -111,31 +111,52 @@ export const ComparisonView = ({
   }, [king, challenger]);
 
   const calculateRankingsFromVotes = async (votes: any[]): Promise<ImageWithWins[]> => {
-    const winCounts: Record<string, number> = {};
+    try {
+      console.log('📊 Calculating rankings from votes:', votes.length, 'votes');
+      
+      const winCounts: Record<string, number> = {};
 
-    votes.forEach(vote => {
-      if (vote.is_tie) {
-        // Both get half a point for ties
-        winCounts[vote.left_image_id] = (winCounts[vote.left_image_id] || 0) + 0.5;
-        winCounts[vote.right_image_id] = (winCounts[vote.right_image_id] || 0) + 0.5;
-      } else if (vote.winner_id) {
-        winCounts[vote.winner_id] = (winCounts[vote.winner_id] || 0) + 1;
+      votes.forEach(vote => {
+        if (vote.is_tie) {
+          winCounts[vote.left_image_id] = (winCounts[vote.left_image_id] || 0) + 0.5;
+          winCounts[vote.right_image_id] = (winCounts[vote.right_image_id] || 0) + 0.5;
+        } else if (vote.winner_id) {
+          winCounts[vote.winner_id] = (winCounts[vote.winner_id] || 0) + 1;
+        }
+      });
+
+      console.log('📊 Win counts:', winCounts);
+
+      const rankedImages = images
+        .map(img => ({ ...img, wins: winCounts[img.id] || 0 }))
+        .sort((a, b) => b.wins - a.wins)
+        .slice(0, 3);
+
+      console.log('🏆 Top 3 ranked images:', rankedImages);
+
+      if (rankedImages.length < 3) {
+        console.error('❌ Not enough images to rank! Only got:', rankedImages.length);
+        toast.error('Not enough images to create a ranking');
+        return [];
       }
-    });
 
-    // Sort images by win count (descending) and take top 3
-    const rankedImages = images
-      .map(img => ({ ...img, wins: winCounts[img.id] || 0 }))
-      .sort((a, b) => b.wins - a.wins)
-      .slice(0, 3);
-
-    return rankedImages;
+      return rankedImages;
+    } catch (error) {
+      console.error('❌ Error calculating rankings:', error);
+      toast.error('Failed to calculate rankings');
+      return [];
+    }
   };
 
   const handleTournamentComplete = async () => {
     try {
+      console.log('🏁 Tournament complete, fetching votes...');
+      
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.error('❌ No user found');
+        return;
+      }
 
       const { data: allVotes } = await supabase
         .from('votes')
@@ -143,12 +164,24 @@ export const ComparisonView = ({
         .eq('prompt_id', promptId)
         .eq('user_id', user.id);
 
-      if (allVotes) {
+      console.log('📊 All votes fetched:', allVotes?.length || 0);
+
+      if (allVotes && allVotes.length > 0) {
         const rankedImages = await calculateRankingsFromVotes(allVotes);
-        onComplete(rankedImages);
+        
+        if (rankedImages.length >= 3) {
+          console.log('✅ Calling onComplete with:', rankedImages);
+          onComplete(rankedImages);
+        } else {
+          console.error('❌ Not enough ranked images');
+          toast.error('Unable to generate rankings');
+        }
+      } else {
+        console.error('❌ No votes found');
+        toast.error('No votes found to calculate rankings');
       }
     } catch (error) {
-      console.error("Error completing tournament:", error);
+      console.error("❌ Error completing tournament:", error);
       toast.error("Failed to calculate rankings");
     }
   };

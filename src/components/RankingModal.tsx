@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -142,13 +142,34 @@ export const RankingModal = ({
   startTime,
   onComplete,
 }: RankingModalProps) => {
-  const [rankings, setRankings] = useState<ImageWithWins[]>(winners.slice(0, 3));
-  const [ratings, setRatings] = useState<Record<string, number>>({
-    [winners[0]?.id]: 5,
-    [winners[1]?.id]: 5,
-    [winners[2]?.id]: 5,
+  console.log('🎯 RankingModal received winners:', winners);
+  console.log('🎯 RankingModal winners length:', winners?.length);
+
+  const [rankings, setRankings] = useState<ImageWithWins[]>(
+    winners && winners.length >= 3 ? winners.slice(0, 3) : []
+  );
+  const [ratings, setRatings] = useState<Record<string, number>>(() => {
+    if (!winners || winners.length < 3) return {};
+    return {
+      [winners[0].id]: 5,
+      [winners[1].id]: 5,
+      [winners[2].id]: 5,
+    };
   });
   const [submitting, setSubmitting] = useState(false);
+
+  // Sync state when winners prop changes
+  useEffect(() => {
+    if (winners && winners.length >= 3) {
+      console.log('✅ Syncing rankings state with winners:', winners);
+      setRankings(winners.slice(0, 3));
+      setRatings({
+        [winners[0].id]: 5,
+        [winners[1].id]: 5,
+        [winners[2].id]: 5,
+      });
+    }
+  }, [winners]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -156,6 +177,26 @@ export const RankingModal = ({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Show loading/error state if data is invalid
+  if (!winners || winners.length < 3) {
+    return (
+      <Dialog open={open}>
+        <DialogContent className="max-w-md glass">
+          <DialogHeader>
+            <DialogTitle>Calculating Rankings...</DialogTitle>
+          </DialogHeader>
+          <div className="py-8 text-center">
+            <p className="text-muted-foreground">
+              {!winners || winners.length === 0 
+                ? 'Processing your votes...' 
+                : `Only ${winners.length} images ranked. Need at least 3.`}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
