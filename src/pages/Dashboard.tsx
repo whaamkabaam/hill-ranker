@@ -130,9 +130,7 @@ const Dashboard = () => {
             </div>
 
             <h3 className="text-lg font-semibold mb-2">GenPeach</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Compare and rank AI-generated images across different models using pairwise comparisons.
-            </p>
+            <p className="text-sm text-muted-foreground mb-4">Compare SOTA Image Gen Models vs GenPeach</p>
 
             <div className="flex items-center justify-between pt-4 border-t">
               <span className="text-sm text-muted-foreground">
