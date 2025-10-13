@@ -32,6 +32,62 @@ export type Database = {
         }
         Relationships: []
       }
+      comparison_sessions: {
+        Row: {
+          average_vote_time_seconds: number | null
+          completed_at: string | null
+          completed_comparisons: number
+          consistency_score: number | null
+          id: string
+          prompt_id: string
+          quality_flags: string[] | null
+          session_metadata: Json | null
+          started_at: string
+          total_comparisons: number
+          transitivity_violations: number | null
+          user_id: string
+          vote_certainty: number | null
+        }
+        Insert: {
+          average_vote_time_seconds?: number | null
+          completed_at?: string | null
+          completed_comparisons?: number
+          consistency_score?: number | null
+          id?: string
+          prompt_id: string
+          quality_flags?: string[] | null
+          session_metadata?: Json | null
+          started_at?: string
+          total_comparisons?: number
+          transitivity_violations?: number | null
+          user_id: string
+          vote_certainty?: number | null
+        }
+        Update: {
+          average_vote_time_seconds?: number | null
+          completed_at?: string | null
+          completed_comparisons?: number
+          consistency_score?: number | null
+          id?: string
+          prompt_id?: string
+          quality_flags?: string[] | null
+          session_metadata?: Json | null
+          started_at?: string
+          total_comparisons?: number
+          transitivity_violations?: number | null
+          user_id?: string
+          vote_certainty?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comparison_sessions_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       images: {
         Row: {
           created_at: string | null

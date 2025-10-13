@@ -111,6 +111,7 @@ export const ComparisonView = ({
   const [completedPairs, setCompletedPairs] = useState<Set<string>>(new Set());
   const [voteHistory, setVoteHistory] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const totalComparisons = allPairs.length;
   const currentPair = allPairs[currentPairIndex] || null;
@@ -133,6 +134,34 @@ export const ComparisonView = ({
         if (!user) {
           setIsLoading(false);
           return;
+        }
+
+        // Create or get existing session
+        const { data: existingSession } = await supabase
+          .from('comparison_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('prompt_id', promptId)
+          .single();
+
+        if (existingSession) {
+          setSessionId(existingSession.id);
+        } else {
+          // Create new session
+          const { data: newSession } = await supabase
+            .from('comparison_sessions')
+            .insert({
+              user_id: user.id,
+              prompt_id: promptId,
+              total_comparisons: pairs.length,
+              completed_comparisons: 0,
+            })
+            .select()
+            .single();
+          
+          if (newSession) {
+            setSessionId(newSession.id);
+          }
         }
 
         // Fetch existing votes
@@ -255,6 +284,17 @@ export const ComparisonView = ({
         })));
 
         if (top3.length >= 3) {
+          // Update session as completed
+          if (sessionId) {
+            await supabase
+              .from('comparison_sessions')
+              .update({
+                completed_at: new Date().toISOString(),
+                completed_comparisons: allPairs.length,
+              })
+              .eq('id', sessionId);
+          }
+
           console.log('✅ Calling onComplete with:', top3);
           onComplete(top3);
         } else {
@@ -296,6 +336,16 @@ export const ComparisonView = ({
       setVoteHistory(prev => [...prev, data.id]);
       setCompletedPairs(prev => new Set([...prev, currentPair.pairId]));
 
+      // Update session progress
+      if (sessionId) {
+        await supabase
+          .from('comparison_sessions')
+          .update({ 
+            completed_comparisons: completedPairs.size + 1 
+          })
+          .eq('id', sessionId);
+      }
+
       // Move to next uncompleted pair
       moveToNextPair();
     } catch (error) {
@@ -328,6 +378,16 @@ export const ComparisonView = ({
 
       setVoteHistory(prev => [...prev, data.id]);
       setCompletedPairs(prev => new Set([...prev, currentPair.pairId]));
+
+      // Update session progress
+      if (sessionId) {
+        await supabase
+          .from('comparison_sessions')
+          .update({ 
+            completed_comparisons: completedPairs.size + 1 
+          })
+          .eq('id', sessionId);
+      }
 
       // Move to next uncompleted pair
       moveToNextPair();

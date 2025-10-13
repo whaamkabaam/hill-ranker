@@ -334,6 +334,19 @@ export const RankingModal = ({
         prompt_id: promptId,
       });
 
+      // Update comparison session with final quality metrics
+      await supabase
+        .from("comparison_sessions")
+        .update({
+          consistency_score: metrics?.consistencyScore || null,
+          vote_certainty: metrics?.voteCertainty || null,
+          transitivity_violations: metrics?.transitivityViolations || 0,
+          average_vote_time_seconds: metrics?.averageVoteTime || null,
+          quality_flags: metrics?.qualityFlags || [],
+        })
+        .eq('user_id', user.id)
+        .eq('prompt_id', promptId);
+
       toast.success("Rankings saved successfully!");
       onComplete();
     } catch (error) {
