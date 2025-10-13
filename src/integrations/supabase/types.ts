@@ -143,49 +143,64 @@ export type Database = {
       }
       rankings: {
         Row: {
+          average_vote_time_seconds: number | null
           completion_time_seconds: number | null
           confidence_score: number | null
+          consistency_score: number | null
           created_at: string | null
           first_id: string
           id: string
           prompt_id: string
+          quality_flags: string[] | null
           rating_first: number
           rating_second: number
           rating_third: number
           second_id: string
           third_id: string
+          transitivity_violations: number | null
           user_email: string
           user_id: string | null
+          vote_certainty: number | null
         }
         Insert: {
+          average_vote_time_seconds?: number | null
           completion_time_seconds?: number | null
           confidence_score?: number | null
+          consistency_score?: number | null
           created_at?: string | null
           first_id: string
           id?: string
           prompt_id: string
+          quality_flags?: string[] | null
           rating_first: number
           rating_second: number
           rating_third: number
           second_id: string
           third_id: string
+          transitivity_violations?: number | null
           user_email: string
           user_id?: string | null
+          vote_certainty?: number | null
         }
         Update: {
+          average_vote_time_seconds?: number | null
           completion_time_seconds?: number | null
           confidence_score?: number | null
+          consistency_score?: number | null
           created_at?: string | null
           first_id?: string
           id?: string
           prompt_id?: string
+          quality_flags?: string[] | null
           rating_first?: number
           rating_second?: number
           rating_third?: number
           second_id?: string
           third_id?: string
+          transitivity_violations?: number | null
           user_email?: string
           user_id?: string | null
+          vote_certainty?: number | null
         }
         Relationships: [
           {

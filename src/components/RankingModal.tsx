@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { calculateQualityMetrics } from "@/lib/rankingMetrics";
 import {
   DndContext,
   closestCenter,
@@ -157,6 +158,12 @@ export const RankingModal = ({
     };
   });
   const [submitting, setSubmitting] = useState(false);
+  const [qualityMetrics, setQualityMetrics] = useState<{
+    consistencyScore: number;
+    transitivityViolations: number;
+    voteCertainty: number;
+    qualityFlags: string[];
+  } | null>(null);
 
   // Sync state when winners prop changes
   useEffect(() => {
@@ -168,8 +175,22 @@ export const RankingModal = ({
         [winners[1].id]: 5,
         [winners[2].id]: 5,
       });
+      // Load quality metrics
+      loadQualityMetrics();
     }
   }, [winners]);
+
+  const loadQualityMetrics = async () => {
+    const metrics = await calculateMetrics();
+    if (metrics) {
+      setQualityMetrics({
+        consistencyScore: metrics.consistencyScore,
+        transitivityViolations: metrics.transitivityViolations,
+        voteCertainty: metrics.voteCertainty,
+        qualityFlags: metrics.qualityFlags,
+      });
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -229,25 +250,37 @@ export const RankingModal = ({
     return true;
   };
 
-  const calculateConfidence = async () => {
+  const calculateMetrics = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return 0;
+      if (!user) return null;
 
       const { data: votes } = await supabase
         .from('votes')
-        .select('is_tie')
+        .select('*')
         .eq('prompt_id', promptId)
         .eq('user_id', user.id);
 
-      if (!votes || votes.length === 0) return 0;
+      if (!votes || votes.length === 0) return null;
 
-      const tieCount = votes.filter(v => v.is_tie).length;
-      const totalVotes = votes.length;
-      return ((totalVotes - tieCount) / totalVotes) * 100;
+      // Calculate all quality metrics
+      const metrics = calculateQualityMetrics(votes);
+      
+      console.log('📊 Quality Metrics:', metrics);
+      
+      // Show warnings for quality issues
+      if (metrics.qualityFlags.length > 0) {
+        if (metrics.qualityFlags.includes('random_voting')) {
+          toast.warning('Low consistency detected in your votes. Please review your ranking.');
+        } else if (metrics.qualityFlags.includes('too_fast')) {
+          toast.info('You voted quite quickly. Please ensure your ranking is accurate.');
+        }
+      }
+      
+      return metrics;
     } catch (error) {
-      console.error("Error calculating confidence:", error);
-      return 0;
+      console.error("Error calculating metrics:", error);
+      return null;
     }
   };
 
@@ -264,11 +297,12 @@ export const RankingModal = ({
         return;
       }
 
-      const confidenceScore = await calculateConfidence();
+      // Calculate all metrics
+      const metrics = await calculateMetrics();
       const completionTime = Math.floor((Date.now() - startTime) / 1000);
 
-      // Save ranking
-      await supabase.from("rankings").insert({
+      // Prepare ranking data with quality metrics
+      const rankingData = {
         prompt_id: promptId,
         user_email: userEmail,
         user_id: user.id,
@@ -278,9 +312,21 @@ export const RankingModal = ({
         rating_first: ratings[rankings[0].id],
         rating_second: ratings[rankings[1].id],
         rating_third: ratings[rankings[2].id],
-        confidence_score: confidenceScore,
         completion_time_seconds: completionTime,
-      });
+        // Quality metrics
+        consistency_score: metrics?.consistencyScore || null,
+        transitivity_violations: metrics?.transitivityViolations || 0,
+        vote_certainty: metrics?.voteCertainty || null,
+        average_vote_time_seconds: metrics?.averageVoteTime || null,
+        quality_flags: metrics?.qualityFlags || [],
+        // Legacy confidence score (kept for backwards compatibility)
+        confidence_score: metrics?.voteCertainty || 0,
+      };
+
+      console.log('💾 Saving ranking with metrics:', rankingData);
+
+      // Save ranking
+      await supabase.from("rankings").insert(rankingData);
 
       // Mark prompt as completed
       await supabase.from("prompt_completions").upsert({
@@ -332,6 +378,49 @@ export const RankingModal = ({
             </div>
           </SortableContext>
         </DndContext>
+
+        {/* Quality Metrics Display */}
+        {qualityMetrics && (
+          <div className="mt-6 p-4 glass rounded-xl space-y-3">
+            <h3 className="font-medium text-sm">Voting Quality Metrics</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Consistency Score</p>
+                <p className={`font-medium ${
+                  qualityMetrics.consistencyScore >= 70 ? 'text-green-500' :
+                  qualityMetrics.consistencyScore >= 50 ? 'text-yellow-500' :
+                  'text-red-500'
+                }`}>
+                  {qualityMetrics.consistencyScore.toFixed(1)}%
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Vote Certainty</p>
+                <p className={`font-medium ${
+                  qualityMetrics.voteCertainty >= 70 ? 'text-green-500' :
+                  qualityMetrics.voteCertainty >= 50 ? 'text-yellow-500' :
+                  'text-red-500'
+                }`}>
+                  {qualityMetrics.voteCertainty.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+            {qualityMetrics.transitivityViolations > 0 && (
+              <p className="text-xs text-yellow-500">
+                ⚠️ {qualityMetrics.transitivityViolations} transitivity violation(s) detected
+              </p>
+            )}
+            {qualityMetrics.qualityFlags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {qualityMetrics.qualityFlags.map(flag => (
+                  <span key={flag} className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded">
+                    {flag.replace(/_/g, ' ')}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <Button
           onClick={handleSubmit}
