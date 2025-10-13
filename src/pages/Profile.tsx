@@ -1,12 +1,15 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Shield } from "lucide-react";
 import hvLogo from "@/assets/hv-capital-logo.png";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Profile = () => {
   const { user, signOut } = useAuth();
+  const { role, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
 
   return (
@@ -57,6 +60,21 @@ const Profile = () => {
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Email</label>
                 <p className="text-base mt-1">{user?.email}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Role
+                </label>
+                <div className="mt-2">
+                  {roleLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  ) : (
+                    <Badge variant={role === 'admin' ? 'destructive' : role === 'moderator' ? 'default' : 'secondary'}>
+                      {role || 'user'}
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">User ID</label>

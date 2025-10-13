@@ -1,7 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, ArrowRight, Lock } from "lucide-react";
+import { Sparkles, ArrowRight, Lock, Shield, User as UserIcon } from "lucide-react";
 import hvLogo from "@/assets/hv-capital-logo.png";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +11,7 @@ import { toast } from "sonner";
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const { role, isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const [promptCount, setPromptCount] = useState(0);
 
@@ -49,9 +52,24 @@ const Dashboard = () => {
           
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium">{getFirstName()}</p>
+              <div className="flex items-center gap-2 justify-end">
+                <p className="text-sm font-medium">{getFirstName()}</p>
+                {role && (
+                  <Badge variant={role === 'admin' ? 'destructive' : role === 'moderator' ? 'default' : 'secondary'} className="text-xs">
+                    {role}
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/profile')}
+              className="glass-hover"
+            >
+              <UserIcon className="w-4 h-4" />
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -75,6 +93,34 @@ const Dashboard = () => {
             Select a tool below to get started
           </p>
         </div>
+
+        {/* Admin Panel (only visible to admins) */}
+        {isAdmin && (
+          <div className="mb-6 glass rounded-xl p-6 border-2 border-primary/50 hover:border-primary transition-all cursor-pointer group"
+               onClick={() => navigate('/admin')}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <Shield className="w-6 h-6 text-primary" />
+              </div>
+              <Badge variant="destructive">Admin Only</Badge>
+            </div>
+
+            <h3 className="text-lg font-semibold mb-2">Admin Panel</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Manage users, roles, and platform settings
+            </p>
+
+            <div className="flex items-center justify-between pt-4 border-t">
+              <span className="text-sm text-muted-foreground">
+                Full platform access
+              </span>
+              <Button size="sm" className="gap-2 group-hover:gap-3 transition-all">
+                Manage
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Tools Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
