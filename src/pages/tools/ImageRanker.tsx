@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import hvLogo from "@/assets/hv-capital-logo.png";
+import { ArrowLeft, Home } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Prompt {
   id: string;
@@ -20,8 +22,9 @@ interface Image {
   prompt_id: string;
 }
 
-const Index = () => {
+const ImageRanker = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
   const [images, setImages] = useState<Image[]>([]);
@@ -110,27 +113,43 @@ const Index = () => {
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-50 glass border-b">
-        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src={hvLogo} alt="HV Capital" className="h-10 object-contain" />
-            <div>
-              <h1 className="text-xl font-bold">HVC.tools</h1>
-              <p className="text-sm text-muted-foreground">
-                Prompt {currentPromptIndex + 1} of {prompts.length}
-              </p>
+        <div className="max-w-7xl mx-auto px-8 py-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-4">
+              <img src={hvLogo} alt="HV Capital" className="h-10 object-contain" />
+              <div>
+                <h1 className="text-xl font-bold">Image AI Ranker</h1>
+                <p className="text-sm text-muted-foreground">
+                  Prompt {currentPromptIndex + 1} of {prompts.length}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground hidden sm:inline">{user?.email}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={signOut}
+                className="glass-hover"
+              >
+                Sign Out
+              </Button>
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
+          <div className="flex items-center gap-2 text-sm">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={signOut}
-              className="glass-hover"
+              onClick={() => navigate('/dashboard')}
+              className="gap-2 h-8"
             >
-              Sign Out
+              <Home className="w-3 h-3" />
+              Dashboard
             </Button>
+            <span className="text-muted-foreground">/</span>
+            <span className="text-muted-foreground">Image AI Ranker</span>
           </div>
         </div>
       </div>
@@ -157,4 +176,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default ImageRanker;

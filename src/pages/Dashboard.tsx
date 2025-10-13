@@ -1,0 +1,170 @@
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { Sparkles, ArrowRight, Lock } from "lucide-react";
+import hvLogo from "@/assets/hv-capital-logo.png";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const Dashboard = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [promptCount, setPromptCount] = useState(0);
+
+  useEffect(() => {
+    loadPromptCount();
+  }, []);
+
+  const loadPromptCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from("prompts")
+        .select("*", { count: 'exact', head: true });
+
+      if (error) throw error;
+      setPromptCount(count || 0);
+    } catch (error) {
+      console.error("Error loading prompt count:", error);
+    }
+  };
+
+  const getFirstName = () => {
+    if (!user?.email) return "User";
+    return user.email.split('@')[0];
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="glass border-b">
+        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img src={hvLogo} alt="HV Capital" className="h-10 object-contain" />
+            <div>
+              <h1 className="text-xl font-bold">HVC.tools</h1>
+              <p className="text-xs text-muted-foreground">Internal Tools Platform</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium">{getFirstName()}</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={signOut}
+              className="glass-hover"
+            >
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-8 py-12">
+        {/* Welcome Section */}
+        <div className="mb-12">
+          <h2 className="text-3xl font-bold mb-2">
+            Welcome back, {getFirstName()} 👋
+          </h2>
+          <p className="text-muted-foreground">
+            Select a tool below to get started
+          </p>
+        </div>
+
+        {/* Tools Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Image AI Ranker - Active Tool */}
+          <div className="glass rounded-xl p-6 hover:border-primary/50 transition-all cursor-pointer group"
+               onClick={() => navigate('/tools/image-ranker')}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <Sparkles className="w-6 h-6 text-primary" />
+              </div>
+              <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
+                Active
+              </span>
+            </div>
+
+            <h3 className="text-lg font-semibold mb-2">Image AI Ranker</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Compare and rank AI-generated images across different models using pairwise comparisons.
+            </p>
+
+            <div className="flex items-center justify-between pt-4 border-t">
+              <span className="text-sm text-muted-foreground">
+                {promptCount} prompts available
+              </span>
+              <Button size="sm" className="gap-2 group-hover:gap-3 transition-all">
+                Launch
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Placeholder Tools */}
+          <div className="glass rounded-xl p-6 opacity-60 cursor-not-allowed">
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 rounded-lg bg-muted/10 flex items-center justify-center">
+                <Lock className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <span className="px-2 py-1 text-xs rounded-full bg-muted/10 text-muted-foreground font-medium">
+                Coming Soon
+              </span>
+            </div>
+
+            <h3 className="text-lg font-semibold mb-2">Tool Name</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              More powerful tools are being developed for the HV Capital team.
+            </p>
+
+            <div className="flex items-center justify-between pt-4 border-t">
+              <span className="text-sm text-muted-foreground">
+                In development
+              </span>
+            </div>
+          </div>
+
+          <div className="glass rounded-xl p-6 opacity-60 cursor-not-allowed">
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 rounded-lg bg-muted/10 flex items-center justify-center">
+                <Lock className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <span className="px-2 py-1 text-xs rounded-full bg-muted/10 text-muted-foreground font-medium">
+                Coming Soon
+              </span>
+            </div>
+
+            <h3 className="text-lg font-semibold mb-2">Tool Name</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              More powerful tools are being developed for the HV Capital team.
+            </p>
+
+            <div className="flex items-center justify-between pt-4 border-t">
+              <span className="text-sm text-muted-foreground">
+                In development
+              </span>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="glass border-t mt-auto">
+        <div className="max-w-7xl mx-auto px-8 py-6 flex items-center justify-between text-sm text-muted-foreground">
+          <p>© 2025 HV Capital. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            <button className="hover:text-foreground transition-colors">Help</button>
+            <button className="hover:text-foreground transition-colors">Support</button>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default Dashboard;
