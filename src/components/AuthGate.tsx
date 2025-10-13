@@ -48,9 +48,7 @@ export const AuthGate = ({
         <div className="glass rounded-2xl p-8 space-y-6">
           <div className="flex flex-col items-center space-y-4">
             <img src={hvLogo} alt="HV Capital" className="h-16 object-contain" />
-            <h1 className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              HVC.tools
-            </h1>
+            <h1 className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">tools</h1>
             <p className="text-muted-foreground text-center">Internal tools for HVC</p>
           </div>
 
