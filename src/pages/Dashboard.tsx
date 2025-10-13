@@ -9,30 +9,36 @@ import hvLogo from "@/assets/hv-capital-logo.png";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
-  const { role, isAdmin, loading: roleLoading } = useUserRole();
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    role,
+    isAdmin,
+    loading: roleLoading
+  } = useUserRole();
   const navigate = useNavigate();
   const [promptCount, setPromptCount] = useState(0);
-
   useEffect(() => {
     loadPromptCount();
   }, []);
-
   const loadPromptCount = async () => {
     try {
-      const { count, error } = await supabase
-        .from("prompts")
-        .select("*", { count: 'exact', head: true });
-
+      const {
+        count,
+        error
+      } = await supabase.from("prompts").select("*", {
+        count: 'exact',
+        head: true
+      });
       if (error) throw error;
       setPromptCount(count || 0);
     } catch (error) {
       console.error("Error loading prompt count:", error);
     }
   };
-
   const getFirstName = () => {
     if (!user?.email) return "User";
     const emailPrefix = user.email.split('@')[0];
@@ -41,9 +47,7 @@ const Dashboard = () => {
     // Capitalize first letter
     return firstName.charAt(0).toUpperCase() + firstName.slice(1);
   };
-
-  return (
-    <div className="min-h-screen flex flex-col animate-fade-in">
+  return <div className="min-h-screen flex flex-col animate-fade-in">
       {/* Header */}
       <header className="glass border-b">
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
@@ -59,28 +63,16 @@ const Dashboard = () => {
             <div className="text-right hidden sm:block">
               <div className="flex items-center gap-2 justify-end">
                 <p className="text-sm font-medium">{getFirstName()}</p>
-                {role && (
-                  <Badge variant={role === 'admin' ? 'destructive' : role === 'moderator' ? 'default' : 'secondary'} className="text-xs">
+                {role && <Badge variant={role === 'admin' ? 'destructive' : role === 'moderator' ? 'default' : 'secondary'} className="text-xs">
                     {role}
-                  </Badge>
-                )}
+                  </Badge>}
               </div>
               <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/profile')}
-              className="glass-hover"
-            >
+            <Button variant="ghost" size="sm" onClick={() => navigate('/profile')} className="glass-hover">
               <UserIcon className="w-4 h-4" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={signOut}
-              className="glass-hover"
-            >
+            <Button variant="outline" size="sm" onClick={signOut} className="glass-hover">
               Sign Out
             </Button>
           </div>
@@ -100,9 +92,7 @@ const Dashboard = () => {
         </div>
 
         {/* Admin Panel (only visible to admins) */}
-        {isAdmin && (
-          <div className="mb-6 glass-card rounded-xl p-6 border-2 border-primary/50 hover:border-primary cursor-pointer group animate-scale-in"
-               onClick={() => navigate('/admin')}>
+        {isAdmin && <div className="mb-6 glass-card rounded-xl p-6 border-2 border-primary/50 hover:border-primary cursor-pointer group animate-scale-in" onClick={() => navigate('/admin')}>
             <div className="flex items-start justify-between mb-4">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                 <Shield className="w-6 h-6 text-primary" />
@@ -124,14 +114,12 @@ const Dashboard = () => {
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
-          </div>
-        )}
+          </div>}
 
         {/* Tools Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Image AI Ranker - Active Tool */}
-          <div className="glass-card rounded-xl p-6 cursor-pointer group hover-lift animate-fade-in"
-               onClick={() => navigate('/tools/image-ranker')}>
+          <div className="glass-card rounded-xl p-6 cursor-pointer group hover-lift animate-fade-in" onClick={() => navigate('/tools/image-ranker')}>
             <div className="flex items-start justify-between mb-4">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                 <Sparkles className="w-6 h-6 text-primary" />
@@ -141,7 +129,7 @@ const Dashboard = () => {
               </span>
             </div>
 
-            <h3 className="text-lg font-semibold mb-2">Image AI Ranker</h3>
+            <h3 className="text-lg font-semibold mb-2">GenPeach</h3>
             <p className="text-sm text-muted-foreground mb-4">
               Compare and rank AI-generated images across different models using pairwise comparisons.
             </p>
@@ -158,7 +146,9 @@ const Dashboard = () => {
           </div>
 
           {/* Placeholder Tools */}
-          <div className="glass-card rounded-xl p-6 opacity-60 cursor-not-allowed animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <div className="glass-card rounded-xl p-6 opacity-60 cursor-not-allowed animate-fade-in" style={{
+          animationDelay: '0.1s'
+        }}>
             <div className="flex items-start justify-between mb-4">
               <div className="w-12 h-12 rounded-lg bg-muted/10 flex items-center justify-center">
                 <Lock className="w-6 h-6 text-muted-foreground" />
@@ -194,8 +184,6 @@ const Dashboard = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Dashboard;
