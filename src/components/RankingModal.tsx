@@ -43,6 +43,7 @@ interface RankingModalProps {
   userEmail: string;
   startTime: number;
   onComplete: () => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface SortableImageProps {
@@ -149,10 +150,15 @@ export const RankingModal = ({
   userEmail,
   startTime,
   onComplete,
+  onOpenChange,
 }: RankingModalProps) => {
   console.log('🎯 RankingModal received winners:', winners);
   console.log('🎯 RankingModal winners length:', winners?.length);
 
+  // Preserve initial winners internally to protect against external state changes
+  const [initialWinners, setInitialWinners] = useState<ImageWithWins[]>(
+    winners && winners.length >= 3 ? winners : []
+  );
   const [rankings, setRankings] = useState<ImageWithWins[]>(
     winners && winners.length >= 3 ? winners.slice(0, 3) : []
   );
@@ -177,37 +183,63 @@ export const RankingModal = ({
     qualityFlags: string[];
   } | null>(null);
 
-  // Sync state when winners prop changes (but not if already submitted)
+  // Fallback recovery: if modal is open but rankings are empty, recover from initialWinners
   useEffect(() => {
-    if (winners && winners.length >= 3 && !hasSubmitted) {
-      console.log('✅ Syncing rankings state with winners:', winners);
-      setRankings(winners.slice(0, 3));
-      setAvailableImages(winners.slice(3)); // Images outside top 3
+    if (open && rankings.length === 0 && initialWinners.length >= 3) {
+      console.log('🔄 Recovering rankings from initialWinners');
+      setRankings(initialWinners.slice(0, 3));
+      setAvailableImages(initialWinners.slice(3));
       
-      // Calculate ranking reasons
       const reasons: Record<string, string> = {};
-      winners.slice(0, 3).forEach((winner, idx) => {
+      initialWinners.slice(0, 3).forEach((winner, idx) => {
         if (idx === 0) {
-          reasons[winner.id] = winner.inCycle 
-            ? "Highest Elo" 
-            : "Best record";
+          reasons[winner.id] = winner.inCycle ? "Highest Elo" : "Best record";
         } else {
-          reasons[winner.id] = winner.inCycle
-            ? "Elo"
-            : `${winner.wins} wins`;
+          reasons[winner.id] = winner.inCycle ? "Elo" : `${winner.wins} wins`;
         }
       });
       setRankingReasons(reasons);
-      
-      setRatings({
-        [winners[0].id]: 7,
-        [winners[1].id]: 6,
-        [winners[2].id]: 5,
-      });
-      // Load quality metrics
-      loadQualityMetrics();
     }
-  }, [winners]);
+  }, [open, rankings.length, initialWinners]);
+
+  // Sync state when winners prop changes (but only if it's NEW data)
+  useEffect(() => {
+    if (open && winners && winners.length >= 3 && !hasSubmitted) {
+      // Check if this is actually NEW data (different from what we have)
+      const isDifferentData = JSON.stringify(winners.map(w => w.id)) !== 
+                             JSON.stringify(initialWinners.map(w => w.id));
+      
+      if (isDifferentData || initialWinners.length === 0) {
+        console.log('✅ Syncing rankings state with NEW winners:', winners);
+        setInitialWinners(winners); // Preserve the data internally
+        setRankings(winners.slice(0, 3));
+        setAvailableImages(winners.slice(3));
+        
+        // Calculate ranking reasons
+        const reasons: Record<string, string> = {};
+        winners.slice(0, 3).forEach((winner, idx) => {
+          if (idx === 0) {
+            reasons[winner.id] = winner.inCycle 
+              ? "Highest Elo" 
+              : "Best record";
+          } else {
+            reasons[winner.id] = winner.inCycle
+              ? "Elo"
+              : `${winner.wins} wins`;
+          }
+        });
+        setRankingReasons(reasons);
+        
+        setRatings({
+          [winners[0].id]: 7,
+          [winners[1].id]: 6,
+          [winners[2].id]: 5,
+        });
+        // Load quality metrics
+        loadQualityMetrics();
+      }
+    }
+  }, [open, winners, hasSubmitted]);
 
   // Reset submission guard when modal closes
   useEffect(() => {
@@ -235,19 +267,19 @@ export const RankingModal = ({
     })
   );
 
-  // Show loading/error state if data is invalid
-  if (!winners || winners.length < 3) {
+  // Show loading/error state if data is invalid (check initialWinners, not winners prop)
+  if (!initialWinners || initialWinners.length < 3) {
     return (
-      <Dialog open={open}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md glass">
           <DialogHeader>
             <DialogTitle>Calculating Rankings...</DialogTitle>
           </DialogHeader>
           <div className="py-8 text-center">
             <p className="text-muted-foreground">
-              {!winners || winners.length === 0 
+              {!initialWinners || initialWinners.length === 0 
                 ? 'Processing your votes...' 
-                : `Only ${winners.length} images ranked. Need at least 3.`}
+                : `Only ${initialWinners.length} images ranked. Need at least 3.`}
             </p>
           </div>
         </DialogContent>
@@ -479,12 +511,7 @@ export const RankingModal = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen && hasSubmitted) {
-        setHasSubmitted(false);
-        setSubmitting(false);
-      }
-    }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">

@@ -90,7 +90,9 @@ const ImageRanker = () => {
   };
 
   const handleComparisonComplete = (winnerImages: ImageWithWins[]) => {
-    console.log('📊 ImageRanker received winners:', winnerImages);
+    console.log('📊 ImageRanker handleComparisonComplete called');
+    console.log('📊 Received winners:', winnerImages);
+    console.log('📊 Current winners state before update:', winners);
     
     if (!winnerImages || winnerImages.length < 3) {
       console.error('❌ Invalid winner images:', winnerImages);
@@ -101,13 +103,16 @@ const ImageRanker = () => {
     console.log('✅ Setting winners and showing ranking modal');
     setWinners(winnerImages);
     setShowRanking(true);
+    console.log('✅ State updates queued');
   };
 
   const handleSkip = () => {
+    console.log('⏭️ Skipping prompt, closing modal');
     setShowRanking(false);
     
     // Add delay before clearing winners
     setTimeout(() => {
+      console.log('🧹 Clearing winners after skip');
       setWinners([]);
     }, 300);
     
@@ -121,14 +126,9 @@ const ImageRanker = () => {
   };
 
   const handleRankingComplete = async () => {
-    // Don't clear winners until AFTER modal closes
+    console.log('✅ Ranking complete, closing modal');
+    // Just close the modal - don't clear winners here
     setShowRanking(false);
-    
-    // Add delay to ensure modal close animation completes
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // NOW safe to clear winners
-    setWinners([]);
     
     // Check for next uncompleted prompt
     try {
@@ -280,6 +280,13 @@ const ImageRanker = () => {
         userEmail={user?.email || ''}
         startTime={startTime}
         onComplete={handleRankingComplete}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            // Modal fully closed - safe to clear winners now
+            console.log('🧹 Modal closed, clearing winners after delay');
+            setTimeout(() => setWinners([]), 300);
+          }
+        }}
       />
     </>
   );
