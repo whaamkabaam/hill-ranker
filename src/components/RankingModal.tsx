@@ -182,14 +182,14 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
       <div className="space-y-1.5">
         <div className="flex justify-between items-center">
           <label className="text-xs font-medium">Realism</label>
-          <span className="text-xs font-bold text-primary">{rating}/10</span>
+          <span className="text-xs font-bold text-primary">{rating.toFixed(1)}/10</span>
         </div>
         <Slider
           value={[rating]}
           onValueChange={(value) => onRatingChange(value[0])}
           min={1}
           max={10}
-          step={1}
+          step={0.1}
           className="w-full"
         />
       </div>

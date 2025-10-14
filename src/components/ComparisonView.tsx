@@ -93,6 +93,19 @@ const detectCycles = (
     graph[img.id] = new Set();
   });
   
+  // Also initialize graph for any image IDs from votes that aren't in images array (swapped out)
+  votes.forEach(vote => {
+    if (vote.winner_id && !graph[vote.winner_id]) {
+      graph[vote.winner_id] = new Set();
+    }
+    if (!graph[vote.left_image_id]) {
+      graph[vote.left_image_id] = new Set();
+    }
+    if (!graph[vote.right_image_id]) {
+      graph[vote.right_image_id] = new Set();
+    }
+  });
+  
   votes.forEach(vote => {
     if (vote.is_tie || !vote.winner_id) return;
     
@@ -101,7 +114,10 @@ const detectCycles = (
       ? vote.right_image_id 
       : vote.left_image_id;
     
-    graph[winnerId].add(loserId);
+    // Defensive check: only add if winnerId exists in graph
+    if (graph[winnerId]) {
+      graph[winnerId].add(loserId);
+    }
   });
   
   // Find strongly connected components (cycles)
@@ -309,6 +325,9 @@ export const ComparisonView = ({
   // PHASE 2: Add debounce mechanism
   const [isTournamentCompleting, setIsTournamentCompleting] = useState(false);
   
+  // Guard flag to prevent infinite loop
+  const [isCompletingTournament, setIsCompletingTournament] = useState(false);
+  
   const estimatedTotal = Math.ceil(images.length * 2.5);
 
   // Initialize King-of-the-Hill tournament
@@ -333,7 +352,7 @@ export const ComparisonView = ({
           .select('id')
           .eq('user_id', user.id)
           .eq('prompt_id', promptId)
-          .single();
+          .maybeSingle();
         
         if (existingRanking) {
           console.log('✅ Prompt already completed, not initializing tournament');
@@ -503,11 +522,21 @@ export const ComparisonView = ({
   };
 
   const handleTournamentComplete = async () => {
+    if (isCompletingTournament) {
+      console.log('⚠️ Tournament completion already in progress, skipping');
+      return;
+    }
+    
+    setIsCompletingTournament(true);
+    
     try {
       console.log('🏆 Tournament complete! Calculating final rankings...');
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsCompletingTournament(false);
+        return;
+      }
 
       // PHASE 0: Check if user has already ranked this prompt
       const { data: existingRanking } = await supabase
@@ -515,10 +544,11 @@ export const ComparisonView = ({
         .select('id')
         .eq('user_id', user.id)
         .eq('prompt_id', promptId)
-        .single();
+        .maybeSingle();
       
       if (existingRanking) {
         console.log('✅ User has already ranked this prompt, skipping tournament');
+        setIsCompletingTournament(false);
         return;
       }
 
@@ -621,10 +651,17 @@ export const ComparisonView = ({
       resetVotingStateAfterTournament();
     } catch (error) {
       console.error("Error completing tournament:", error);
+      console.error("Error stack:", error instanceof Error ? error.stack : 'No stack');
+      console.error("Context:", {
+        promptId,
+        imagesCount: images.length,
+      });
       toast.error("Failed to calculate rankings");
       
       // Reset state even on error
       resetVotingStateAfterTournament();
+    } finally {
+      setIsCompletingTournament(false);
     }
   };
 
