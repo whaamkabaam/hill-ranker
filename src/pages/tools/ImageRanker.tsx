@@ -112,7 +112,7 @@ const ImageRanker = () => {
     console.log('✅ State updates queued');
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     console.log('⏭️ Skipping prompt, closing modal');
     setShowRanking(false);
     
@@ -122,12 +122,46 @@ const ImageRanker = () => {
       setWinners([]);
     }, 300);
     
-    if (currentPromptIndex < prompts.length - 1) {
-      setCurrentPromptIndex(currentPromptIndex + 1);
-      setStartTime(Date.now());
-      toast.success("Skipped to next prompt");
-    } else {
-      toast.info("This is the last prompt");
+    // Find next uncompleted prompt
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: completed } = await supabase
+        .from('prompt_completions')
+        .select('prompt_id')
+        .eq('user_id', user.id);
+
+      const completedIds = new Set(completed?.map(c => c.prompt_id) || []);
+      
+      // Find next uncompleted prompt after current one
+      const nextPrompt = prompts.find((p, idx) => idx > currentPromptIndex && !completedIds.has(p.id));
+      
+      // If no uncompleted prompts after current, wrap around to beginning
+      const wrappedPrompt = !nextPrompt ? prompts.find(p => !completedIds.has(p.id)) : null;
+      
+      const targetPrompt = nextPrompt || wrappedPrompt;
+
+      if (targetPrompt) {
+        const nextIndex = prompts.findIndex(p => p.id === targetPrompt.id);
+        console.log('📊 Moving to next uncompleted prompt:', { nextIndex, prompt: targetPrompt.text });
+        setCurrentPromptIndex(nextIndex);
+        setStartTime(Date.now());
+        toast.success("Moving to next uncompleted prompt");
+      } else {
+        // All prompts completed
+        toast.success("🎉 All prompts completed!", { duration: 3000 });
+      }
+    } catch (error) {
+      console.error("Error finding next prompt:", error);
+      // Fallback to simple increment
+      if (currentPromptIndex < prompts.length - 1) {
+        setCurrentPromptIndex(currentPromptIndex + 1);
+        setStartTime(Date.now());
+        toast.success("Skipped to next prompt");
+      } else {
+        toast.info("This is the last prompt");
+      }
     }
   };
 
