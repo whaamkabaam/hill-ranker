@@ -33,6 +33,7 @@ interface Image {
 
 interface ImageWithWins extends Image {
   wins: number;
+  inCycle?: boolean;
 }
 
 interface RankingModalProps {
@@ -105,6 +106,11 @@ const SortableImage = ({ image, rank, rating, onRatingChange }: SortableImagePro
                   <span className="text-sm font-medium">{image.wins} wins</span>
                 </div>
               </div>
+              {image.inCycle && (
+                <div className="absolute bottom-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium text-black">
+                  ⚔️ Circular preference
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

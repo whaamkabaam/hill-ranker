@@ -245,6 +245,10 @@ export const ComparisonView = ({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [imagesLoaded, setImagesLoaded] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
   
+  // Vote deduplication state
+  const [pendingVote, setPendingVote] = useState<boolean>(false);
+  const [voteCache, setVoteCache] = useState<Set<string>>(new Set());
+  
   const estimatedTotal = Math.ceil(images.length * 2.5);
 
   // Initialize King-of-the-Hill tournament
@@ -298,6 +302,14 @@ export const ComparisonView = ({
           .eq('user_id', user.id);
 
         if (existingVotes && existingVotes.length > 0) {
+          // Populate vote cache with existing votes
+          const cache = new Set<string>();
+          existingVotes.forEach(vote => {
+            const key = getVotePairKey(vote.left_image_id, vote.right_image_id);
+            cache.add(key);
+          });
+          setVoteCache(cache);
+          
           // Reconstruct state from votes
           const usedImages = new Set<string>();
           
@@ -413,6 +425,11 @@ export const ComparisonView = ({
         wins: img.wins 
       })));
       
+      // Detect cycles to pass to modal
+      const cycles = detectCycles(rankedImages, allVotes);
+      const inCycle = new Set<string>();
+      cycles.forEach(cycle => cycle.forEach(id => inCycle.add(id)));
+      
       // Resolve using graph-based approach (handles cycles)
       rankedImages = resolveRankingsWithCycles(rankedImages, allVotes);
       
@@ -421,12 +438,16 @@ export const ComparisonView = ({
         return;
       }
       
-      const top3 = rankedImages.slice(0, 3);
+      const top3 = rankedImages.slice(0, 3).map(img => ({
+        ...img,
+        inCycle: inCycle.has(img.id)
+      }));
       
       console.log('🏆 Final Top 3 (after h2h resolution):', top3.map(img => ({ 
         model: img.model_name, 
         elo: img.elo, 
-        wins: img.wins 
+        wins: img.wins,
+        inCycle: img.inCycle 
       })));
 
       // Update session as completed
@@ -447,13 +468,36 @@ export const ComparisonView = ({
     }
   };
 
+  // Helper: Create unique key for vote pairs (always sorted)
+  const getVotePairKey = (img1Id: string, img2Id: string): string => {
+    return [img1Id, img2Id].sort().join('|');
+  };
+
+  // Helper: Check if already voted on this pair
+  const hasVotedOnPair = (img1Id: string, img2Id: string): boolean => {
+    const key = getVotePairKey(img1Id, img2Id);
+    return voteCache.has(key);
+  };
+
   const handleSelection = async (winner: Image) => {
     if (!champion || !challenger || animationState !== 'idle') return;
+
+    // Block duplicate votes
+    if (pendingVote || hasVotedOnPair(champion.id, challenger.id)) {
+      console.log('⏸️ Vote blocked: Already processing or voted on this pair');
+      return;
+    }
+
+    // Lock voting immediately
+    setPendingVote(true);
+    const pairKey = getVotePairKey(champion.id, challenger.id);
+    setVoteCache(prev => new Set(prev).add(pairKey));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("You must be logged in to vote");
+        setPendingVote(false);
         return;
       }
 
@@ -502,6 +546,7 @@ export const ComparisonView = ({
         
         // Reset animation
         setAnimationState('idle');
+        setPendingVote(false);
       } else {
         // Challenger wins: 4-phase animation
         console.log('🎬 Animation Phase 1: Exit animation (right-wins) - 600ms');
@@ -545,11 +590,29 @@ export const ComparisonView = ({
           setChallenger(null);
           setAnimationState('idle');
         }
+        
+        setPendingVote(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving vote:", error);
-      toast.error("Failed to save vote");
-      setAnimationState('idle');
+      
+      if (error?.code === '23505' || error?.message?.includes('duplicate key')) {
+        // This pair was already voted on - continue gracefully
+        console.log('⚠️ Vote already exists for this pair, continuing...');
+        toast.info("You've already voted on this comparison");
+      } else {
+        toast.error(`Failed to save vote: ${error?.message || 'Unknown error'}`);
+        // Reset state so user can try again
+        setAnimationState('idle');
+        setPendingVote(false);
+        // Remove from cache since vote failed
+        setVoteCache(prev => {
+          const newCache = new Set(prev);
+          newCache.delete(pairKey);
+          return newCache;
+        });
+        return;
+      }
     }
   };
 
@@ -649,6 +712,8 @@ export const ComparisonView = ({
       console.log('🔄 Resetting component state...');
       setTotalComparisons(0);
       setSessionId(null);
+      setVoteCache(new Set());
+      setPendingVote(false);
       
       // Reset to fresh King-of-the-Hill state
       setChampion(images[0]);
@@ -806,7 +871,13 @@ export const ComparisonView = ({
               variant="outline"
               size="lg"
               className="glass-hover gap-3 min-w-[200px] hover:border-primary/50 transition-all"
-              disabled={!imagesLoaded.left || !imagesLoaded.right || animationState !== 'idle'}
+              disabled={
+                !imagesLoaded.left || 
+                !imagesLoaded.right || 
+                animationState !== 'idle' ||
+                pendingVote ||
+                hasVotedOnPair(champion?.id || '', challenger?.id || '')
+              }
             >
               <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">←</kbd>
               <span className="font-semibold">Champion Wins</span>
@@ -816,7 +887,13 @@ export const ComparisonView = ({
               variant="outline"
               size="lg"
               className="glass-hover gap-3 min-w-[200px] hover:border-primary/50 transition-all"
-              disabled={!imagesLoaded.left || !imagesLoaded.right || animationState !== 'idle'}
+              disabled={
+                !imagesLoaded.left || 
+                !imagesLoaded.right || 
+                animationState !== 'idle' ||
+                pendingVote ||
+                hasVotedOnPair(champion?.id || '', challenger?.id || '')
+              }
             >
               <span className="font-semibold">Challenger Wins</span>
               <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">→</kbd>
