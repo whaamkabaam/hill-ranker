@@ -3,6 +3,9 @@ import { ComparisonView } from "@/components/ComparisonView";
 import { RankingModal } from "@/components/RankingModal";
 import { GlobalLeaderboard } from "@/components/GlobalLeaderboard";
 import { ReviewRankings } from "@/components/ReviewRankings";
+import { PairwiseMatrixView } from "@/components/PairwiseMatrixView";
+import ModelPerformanceChart from "@/components/admin/ModelPerformanceChart";
+import QualityMetricsDashboard from "@/components/admin/QualityMetricsDashboard";
 import OnboardingTutorial from "@/components/OnboardingTutorial";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -10,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import hvLogo from "@/assets/hv-capital-logo.png";
-import { ArrowLeft, Home, BarChart3, History } from "lucide-react";
+import { ArrowLeft, Home, BarChart3, History, Trophy, TrendingUp, Award, Grid3x3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 interface Prompt {
   id: string;
@@ -350,14 +353,53 @@ const ImageRanker = () => {
                     <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                       <BarChart3 className="w-10 h-10 text-primary" />
                     </div>
-                    <h2 className="text-2xl font-bold">🔒 Leaderboard Locked</h2>
-                    <p className="text-muted-foreground">Complete at least one image ranking to unlock the global leaderboard.</p>
+                    <h2 className="text-2xl font-bold">🔒 Advanced Analytics Locked</h2>
+                    <p className="text-muted-foreground">Complete at least one image ranking to unlock all advanced analytics features.</p>
                     
                     <Button onClick={() => setActiveTab('ranking')} className="mt-4" size="lg">
                       Start Ranking Images →
                     </Button>
                   </div>
-                </div> : <GlobalLeaderboard />}
+                </div> : 
+                <div className="space-y-6">
+                  <Tabs defaultValue="leaderboard" className="space-y-6">
+                    <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-4">
+                      <TabsTrigger value="leaderboard" className="gap-2">
+                        <Trophy className="w-4 h-4" />
+                        Leaderboard
+                      </TabsTrigger>
+                      <TabsTrigger value="performance" className="gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        Performance
+                      </TabsTrigger>
+                      <TabsTrigger value="quality" className="gap-2">
+                        <Award className="w-4 h-4" />
+                        Quality
+                      </TabsTrigger>
+                      <TabsTrigger value="matrix" className="gap-2">
+                        <Grid3x3 className="w-4 h-4" />
+                        Matrix
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="leaderboard">
+                      <GlobalLeaderboard />
+                    </TabsContent>
+
+                    <TabsContent value="performance">
+                      <ModelPerformanceChart />
+                    </TabsContent>
+
+                    <TabsContent value="quality">
+                      <QualityMetricsDashboard />
+                    </TabsContent>
+
+                    <TabsContent value="matrix">
+                      <PairwiseMatrixView />
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              }
             </TabsContent>
 
             <TabsContent value="history">
