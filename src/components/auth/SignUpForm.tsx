@@ -31,20 +31,7 @@ export const SignUpForm = ({ onSuccess }: SignUpFormProps) => {
 
       const emailLower = email.toLowerCase().trim();
 
-      // Check if email is in allowed_users first
-      const { data: allowedUser } = await supabase
-        .from('allowed_users')
-        .select('email')
-        .eq('email', emailLower)
-        .maybeSingle();
-
-      if (!allowedUser) {
-        toast.error('Access restricted to HV Capital participants.');
-        setLoading(false);
-        return;
-      }
-
-      // Sign up with Supabase
+      // Sign up with Supabase - validation handled by database trigger
       const { error } = await supabase.auth.signUp({
         email: emailLower,
         password,
