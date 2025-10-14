@@ -69,14 +69,21 @@ const ProfileImageManager = () => {
     // Split by underscore
     const parts = nameWithoutExt.split('_');
     
-    // Convert to lowercase and handle special characters
+    // Normalize each part: remove hyphens and handle special characters
     const processedParts = parts.map(part => 
       part.toLowerCase()
+        // Remove hyphens and special punctuation
+        .replace(/[-]/g, '')
+        // Normalize accented characters (decompose then remove diacritics)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        // Additional explicit replacements for safety
         .replace(/ö/g, 'o')
         .replace(/ü/g, 'u')
         .replace(/ä/g, 'a')
         .replace(/ë/g, 'e')
         .replace(/ï/g, 'i')
+        .replace(/ø/g, 'o')
     );
     
     // Join with dot and append domain
