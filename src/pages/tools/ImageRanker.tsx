@@ -137,7 +137,6 @@ const ImageRanker = () => {
     console.log('✅ Setting winners and showing ranking modal');
     setWinners(winnerImages);
     setShowRanking(true);
-    setIsPromptInProgress(false); // PHASE 3: Stop tournament
     setStartTime(Date.now());
     console.log('✅ State updates queued');
   };
