@@ -14,7 +14,6 @@ interface ModelStats {
   secondPlaceCount: number;
   thirdPlaceCount: number;
   avgRating: number;
-  winRate: number;
   totalAppearances: number;
   totalRatingsSum: number;
   totalRatingsCount: number;
@@ -101,7 +100,6 @@ export function GlobalLeaderboard() {
             secondPlaceCount: 0,
             thirdPlaceCount: 0,
             avgRating: 0,
-            winRate: 0,
             totalAppearances: 0,
             totalRatingsSum: 0,
             totalRatingsCount: 0,
@@ -123,7 +121,6 @@ export function GlobalLeaderboard() {
             secondPlaceCount: 0,
             thirdPlaceCount: 0,
             avgRating: 0,
-            winRate: 0,
             totalAppearances: 0,
             totalRatingsSum: 0,
             totalRatingsCount: 0,
@@ -145,7 +142,6 @@ export function GlobalLeaderboard() {
             secondPlaceCount: 0,
             thirdPlaceCount: 0,
             avgRating: 0,
-            winRate: 0,
             totalAppearances: 0,
             totalRatingsSum: 0,
             totalRatingsCount: 0,
@@ -160,13 +156,8 @@ export function GlobalLeaderboard() {
         }
       });
 
-      // Calculate win rate and average rating
+      // Calculate average rating
       const modelStatsArray = Array.from(modelStatsMap.values()).map(stats => {
-        // Calculate win rate (percentage of times model came in 1st place)
-        stats.winRate = stats.totalAppearances > 0
-          ? (stats.firstPlaceCount / stats.totalAppearances) * 100
-          : 0;
-        
         // Calculate average realism rating (out of 10)
         stats.avgRating = stats.totalRatingsCount > 0
           ? stats.totalRatingsSum / stats.totalRatingsCount
@@ -316,7 +307,6 @@ export function GlobalLeaderboard() {
                       </TooltipContent>
                     </Tooltip>
                   </TableHead>
-                  <TableHead className="text-center">Win Rate</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -345,9 +335,6 @@ export function GlobalLeaderboard() {
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="font-medium">{model.winRate.toFixed(1)}%</span>
                     </TableCell>
                   </TableRow>
                 ))}
