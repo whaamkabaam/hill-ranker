@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ImagePreviewModal } from "./ImagePreviewModal";
 
 interface ImageCardProps {
   imageUrl: string;
@@ -11,6 +12,7 @@ interface ImageCardProps {
 
 export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blindMode = false }: ImageCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const handleImageLoad = () => {
     console.log(`🖼️ ${side === "left" ? "Left" : "Right"} image loaded`);
@@ -24,7 +26,10 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="glass rounded-2xl overflow-hidden relative group">
-        <div className="aspect-square relative overflow-hidden">
+        <div 
+          className="aspect-square relative overflow-hidden cursor-pointer"
+          onClick={() => setShowPreview(true)}
+        >
           <img
             src={imageUrl}
             alt={`${modelName} generated image`}
@@ -33,6 +38,14 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
             }`}
             onLoad={handleImageLoad}
           />
+          
+          {/* Click to enlarge hint */}
+          <div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`}>
+            <p className="text-white font-semibold">Click to enlarge</p>
+          </div>
+          
           {isKing && (
             <div className="absolute top-4 left-4 bg-yellow-500/90 text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-lg">
               <span className="text-base">👑</span>
@@ -59,6 +72,14 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
           </>
         )}
       </div>
+      
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        imageUrl={imageUrl}
+        modelName={blindMode ? `Image ${side === "left" ? "A" : "B"}` : modelName}
+        open={showPreview}
+        onOpenChange={setShowPreview}
+      />
     </div>
   );
 };

@@ -356,6 +356,9 @@ export const ComparisonView = ({
   const [totalComparisons, setTotalComparisons] = useState(0);
   const [animationState, setAnimationState] = useState<AnimationState>('idle');
   
+  // Track which image is the actual champion (by ID, not position)
+  const [championId, setChampionId] = useState<string | null>(null);
+  
   // Session state
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -873,6 +876,9 @@ export const ComparisonView = ({
         setAnimationState('replacing-left');
         setImagesLoaded(prev => ({ ...prev, left: false }));
         
+        // Update championId to the challenger (new champion)
+        setChampionId(challenger.id);
+        
         setTimeout(() => {
           // The challenger becomes the new champion (but we swap display positions)
           const newChampion = challenger;
@@ -1079,6 +1085,7 @@ export const ComparisonView = ({
       setChampion(disambiguatedImages[0]);
       setChallenger(disambiguatedImages[1]);
       setRemainingImages(disambiguatedImages.slice(2));
+      setChampionId(disambiguatedImages[0].id);
       
       // Create new session
       console.log('✨ Creating new session...');
@@ -1213,7 +1220,7 @@ export const ComparisonView = ({
                 imageUrl={champion.image_url}
                 modelName={champion.model_name}
                 side="left"
-                isKing={true}
+                isKing={champion.id === championId}
                 onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
                 blindMode={true}
               />
@@ -1238,7 +1245,7 @@ export const ComparisonView = ({
                 imageUrl={challenger.image_url}
                 modelName={challenger.model_name}
                 side="right"
-                isKing={false}
+                isKing={challenger.id === championId}
                 onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
                 blindMode={true}
               />
@@ -1263,7 +1270,7 @@ export const ComparisonView = ({
               }
             >
               <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">←</kbd>
-              <span className="font-semibold">Champion Wins</span>
+              <span className="font-semibold">{champion?.id === championId ? "Champion Wins" : "Challenger Wins"}</span>
             </Button>
             <Button
               onClick={() => handleSelection(challenger)}
@@ -1278,7 +1285,7 @@ export const ComparisonView = ({
                 hasVotedOnPair(champion?.id || '', challenger?.id || '')
               }
             >
-              <span className="font-semibold">Challenger Wins</span>
+              <span className="font-semibold">{challenger?.id === championId ? "Champion Wins" : "Challenger Wins"}</span>
               <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">→</kbd>
             </Button>
           </div>

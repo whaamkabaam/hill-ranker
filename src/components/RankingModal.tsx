@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { calculateQualityMetrics } from "@/lib/rankingMetrics";
+import { ImagePreviewModal } from "./ImagePreviewModal";
 import {
   DndContext,
   closestCenter,
@@ -107,7 +108,13 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
       </div>
 
       {/* Image */}
-      <div className="aspect-square rounded-md overflow-hidden mb-3 border border-border">
+      <div 
+        className="aspect-square rounded-md overflow-hidden mb-3 border border-border cursor-pointer hover:border-primary transition-colors"
+        onClick={(e) => {
+          e.stopPropagation();
+          onReplace(image);
+        }}
+      >
         <img
           src={image.image_url}
           alt={image.model_name}
@@ -236,6 +243,11 @@ export const RankingModal = ({
     voteCertainty: number;
     qualityFlags: string[];
   } | null>(null);
+  
+  // Image preview state
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number>(0);
+  const [allPreviewImages, setAllPreviewImages] = useState<{ url: string; name: string }[]>([]);
 
   // Compute available images (exclude current top 3) - PHASE 1
   const computedAvailableImages = useMemo(() => {
@@ -264,12 +276,12 @@ export const RankingModal = ({
   useEffect(() => {
     if (open && winners && winners.length >= 3 && !hasSubmitted) {
       // Check if this is actually NEW data (different from what we have)
-      const isDifferentData = JSON.stringify(winners.map(w => w.id)) !== 
-                             JSON.stringify(initialWinners.map(w => w.id));
+      const winnersIds = JSON.stringify(winners.map(w => w.id).sort());
+      const initialIds = JSON.stringify(initialWinners.map(w => w.id).sort());
+      const isDifferentData = winnersIds !== initialIds;
       
-      // Only sync if this is NEW data and we haven't submitted yet
-      if ((isDifferentData && initialWinners.length === 0) || 
-          (isDifferentData && !hasSubmitted)) {
+      // Only sync if this is NEW data AND (we have no initial data OR it's genuinely different)
+      if (isDifferentData && (initialWinners.length === 0 || initialIds !== winnersIds)) {
         console.log('✅ Syncing rankings state with NEW winners:', winners);
         
         // PHASE 6: Comprehensive debug logging
@@ -547,6 +559,24 @@ export const RankingModal = ({
       duration: 2000,
     });
   };
+  
+  const handleImageClick = (image: ImageWithWins, index: number) => {
+    const allImages = [...rankings, ...computedAvailableImages].map(img => ({
+      url: img.image_url,
+      name: img.model_name
+    }));
+    setAllPreviewImages(allImages);
+    setPreviewImage({ url: image.image_url, name: image.model_name });
+    setPreviewIndex(index);
+  };
+  
+  const handleNavigate = (direction: 'prev' | 'next') => {
+    const newIndex = direction === 'prev' ? previewIndex - 1 : previewIndex + 1;
+    if (newIndex >= 0 && newIndex < allPreviewImages.length) {
+      setPreviewIndex(newIndex);
+      setPreviewImage(allPreviewImages[newIndex]);
+    }
+  };
 
   const validateRankings = () => {
     // Ensure all 3 are different
@@ -716,19 +746,20 @@ export const RankingModal = ({
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {rankings.map((image, index) => (
-                <SortableImageCompact
-                  key={image.id}
-                  image={image}
-                  rank={index}
-                  rating={ratings[image.id]}
-                  onRatingChange={(value) =>
-                    setRatings({ ...ratings, [image.id]: value })
-                  }
-                  rankingReason={rankingReasons[image.id]}
-                  availableImages={computedAvailableImages}
-                  onReplace={(imageToSwap) => handleSwapImage(imageToSwap, index)}
-                  isSwapped={swappedImageIds.includes(image.id)}
-                />
+                <div key={image.id} onClick={() => handleImageClick(image, index)}>
+                  <SortableImageCompact
+                    image={image}
+                    rank={index}
+                    rating={ratings[image.id]}
+                    onRatingChange={(value) =>
+                      setRatings({ ...ratings, [image.id]: value })
+                    }
+                    rankingReason={rankingReasons[image.id]}
+                    availableImages={computedAvailableImages}
+                    onReplace={(imageToSwap) => handleSwapImage(imageToSwap, index)}
+                    isSwapped={swappedImageIds.includes(image.id)}
+                  />
+                </div>
               ))}
             </div>
           </SortableContext>
@@ -750,8 +781,12 @@ export const RankingModal = ({
             
             {showAllImages && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {computedAvailableImages.map((img) => (
-                  <div key={img.id} className="group relative rounded-lg border overflow-hidden hover:border-primary transition-colors">
+                {computedAvailableImages.map((img, idx) => (
+                  <div 
+                    key={img.id} 
+                    className="group relative rounded-lg border overflow-hidden hover:border-primary transition-colors cursor-pointer"
+                    onClick={() => handleImageClick(img, rankings.length + idx)}
+                  >
                     <div className="aspect-square">
                       <img
                         src={img.image_url}
@@ -766,7 +801,10 @@ export const RankingModal = ({
                         {[0, 1, 2].map((pos) => (
                           <button
                             key={pos}
-                            onClick={() => handleSwapImage(img, pos)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSwapImage(img, pos);
+                            }}
                             className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded hover:bg-primary/90 transition-colors"
                           >
                             → {pos === 0 ? '🥇' : pos === 1 ? '🥈' : '🥉'}
@@ -839,6 +877,19 @@ export const RankingModal = ({
           )}
         </Button>
       </DialogContent>
+      
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <ImagePreviewModal
+          imageUrl={previewImage.url}
+          modelName={previewImage.name}
+          open={!!previewImage}
+          onOpenChange={(open) => !open && setPreviewImage(null)}
+          allImages={allPreviewImages}
+          currentIndex={previewIndex}
+          onNavigate={handleNavigate}
+        />
+      )}
     </Dialog>
   );
 };

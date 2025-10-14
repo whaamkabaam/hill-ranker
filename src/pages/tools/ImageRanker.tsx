@@ -43,6 +43,8 @@ const ImageRanker = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   // PHASE 3: Track whether prompt is actively being ranked
   const [isPromptInProgress, setIsPromptInProgress] = useState(true);
+  // Track modal version to force new instance
+  const [modalVersion, setModalVersion] = useState(0);
   // Track if all prompts are completed
   const [allPromptsCompleted, setAllPromptsCompleted] = useState(false);
   // Track if user has voted at least once (for leaderboard access)
@@ -137,6 +139,7 @@ const ImageRanker = () => {
     console.log('✅ Setting winners and showing ranking modal');
     setWinners(winnerImages);
     setShowRanking(true);
+    setModalVersion(prev => prev + 1); // Force new modal instance
     setStartTime(Date.now());
     console.log('✅ State updates queued');
   };
@@ -203,7 +206,11 @@ const ImageRanker = () => {
   const handleRankingComplete = async () => {
     console.log('✅ Ranking complete, closing modal');
     setShowRanking(false);
-    setWinners([]); // PHASE 1: Clear winners immediately
+    
+    // Add delay before clearing winners to prevent re-trigger
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    setWinners([]); // PHASE 1: Clear winners after delay
     setIsPromptInProgress(true); // PHASE 3: Ready for next prompt
 
     // Check if this was user's first vote
@@ -360,7 +367,7 @@ const ImageRanker = () => {
         </div>
       </div>
 
-      {winners.length >= 3 && <RankingModal open={showRanking} winners={winners} promptId={currentPrompt.id} userEmail={user?.email || ''} startTime={startTime} onComplete={handleRankingComplete} />}
+      {winners.length >= 3 && <RankingModal key={modalVersion} open={showRanking} winners={winners} promptId={currentPrompt.id} userEmail={user?.email || ''} startTime={startTime} onComplete={handleRankingComplete} />}
     </>;
 };
 export default ImageRanker;
