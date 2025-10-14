@@ -522,12 +522,49 @@ export const ComparisonView = ({
         return;
       }
       
-      const top3 = rankedImages.slice(0, 3).map(img => ({
-        ...img,
-        inCycle: inCycle.has(img.id)
-      }));
+      // Build head-to-head win records for the modal
+      const h2hWins: Record<string, Record<string, number>> = {};
+      rankedImages.forEach(img => {
+        h2hWins[img.id] = {};
+      });
       
-      console.log('🏆 Final Top 3 (after h2h resolution):', top3.map(img => ({ 
+      allVotes.forEach(vote => {
+        if (vote.is_tie || !vote.winner_id) return;
+        
+        const winnerId = vote.winner_id;
+        const loserId = vote.left_image_id === winnerId 
+          ? vote.right_image_id 
+          : vote.left_image_id;
+        
+        if (!h2hWins[winnerId][loserId]) {
+          h2hWins[winnerId][loserId] = 0;
+        }
+        h2hWins[winnerId][loserId]++;
+      });
+      
+      // Pass ALL ranked images (not just top 3) with H2H relationships
+      const allRankedWithH2H = rankedImages.map((img, idx) => {
+        const relationships: Record<string, { wins: number; losses: number }> = {};
+        
+        // Calculate H2H for top 3 only (since those are the ones we display in modal)
+        if (idx < 3) {
+          rankedImages.slice(0, 3).forEach((other, otherIdx) => {
+            if (idx !== otherIdx) {
+              const winsVsOther = h2hWins[img.id]?.[other.id] || 0;
+              const lossesVsOther = h2hWins[other.id]?.[img.id] || 0;
+              relationships[other.id] = { wins: winsVsOther, losses: lossesVsOther };
+            }
+          });
+        }
+        
+        return {
+          ...img,
+          inCycle: inCycle.has(img.id),
+          h2hRelationships: relationships
+        };
+      });
+      
+      console.log('🏆 Final Top 3 (after h2h resolution):', allRankedWithH2H.slice(0, 3).map(img => ({ 
         model: img.model_name, 
         elo: img.elo, 
         wins: img.wins,
@@ -545,7 +582,7 @@ export const ComparisonView = ({
           .eq('id', sessionId);
       }
 
-      onComplete(top3);
+      onComplete(allRankedWithH2H);
       
       // Reset voting state to prevent stale data
       resetVotingStateAfterTournament();

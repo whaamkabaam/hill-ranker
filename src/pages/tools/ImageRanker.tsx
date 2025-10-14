@@ -287,13 +287,6 @@ const ImageRanker = () => {
         userEmail={user?.email || ''}
         startTime={startTime}
         onComplete={handleRankingComplete}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            // Modal fully closed - safe to clear winners now
-            console.log('🧹 Modal closed, clearing winners after delay');
-            setTimeout(() => setWinners([]), 300);
-          }
-        }}
       />
     </>
   );

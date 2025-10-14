@@ -36,6 +36,7 @@ interface ImageWithWins extends Image {
   wins: number;
   elo?: number;
   inCycle?: boolean;
+  h2hRelationships?: Record<string, { wins: number; losses: number }>;
 }
 
 interface RankingModalProps {
@@ -128,25 +129,25 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
         )}
       </div>
 
-      {/* Replace button */}
-      {availableImages.length > 0 && (
-        <div className="mb-3">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="w-full text-xs h-7"
-              >
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Replace
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-3" align="center">
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Replace with:</p>
-                <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
-                  {availableImages.map((img) => (
+      {/* Replace button - Filter swappable images within component */}
+      <div className="mb-3">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full text-xs h-7"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Replace
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-3" align="center">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Replace with:</p>
+              <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
+                {availableImages.filter(img => img.id !== image.id).length > 0 ? (
+                  availableImages.filter(img => img.id !== image.id).map((img) => (
                     <button
                       key={img.id}
                       onClick={() => onReplace(img)}
@@ -166,13 +167,17 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
                         {img.wins} wins
                       </p>
                     </button>
-                  ))}
-                </div>
+                  ))
+                ) : (
+                  <div className="col-span-2 text-xs text-muted-foreground p-2 text-center">
+                    No other images available
+                  </div>
+                )}
               </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
 
       {/* Compact rating slider */}
       <div className="space-y-1.5">
@@ -215,6 +220,7 @@ export const RankingModal = ({
   const [rankingReasons, setRankingReasons] = useState<Record<string, string>>({});
   const [availableImages, setAvailableImages] = useState<ImageWithWins[]>([]);
   const [showAllImages, setShowAllImages] = useState(false);
+  const [showH2HStats, setShowH2HStats] = useState(false);
   const [swappedImageIds, setSwappedImageIds] = useState<string[]>([]);
   const [ratings, setRatings] = useState<Record<string, number>>(() => {
     if (!winners || winners.length < 3) return {};
@@ -238,36 +244,12 @@ export const RankingModal = ({
     if (open && rankings.length === 0 && initialWinners.length >= 3) {
       console.log('🔄 Recovering rankings from initialWinners');
       setRankings(initialWinners.slice(0, 3));
-      const available = initialWinners.slice(3);
-      setAvailableImages(available);
+      setAvailableImages(initialWinners);
       
-      console.log('🎯 [Recovery] Available images for swapping:', available.length);
+      console.log('🎯 [Recovery] Available images for swapping:', initialWinners.length);
       
-      // Use same improved ranking reasons
-      const reasons: Record<string, string> = {};
-      initialWinners.slice(0, 3).forEach((winner, idx) => {
-        if (idx === 0) {
-          if (winner.inCycle && winner.elo) {
-            reasons[winner.id] = `Champion (Elo ${winner.elo})`;
-          } else {
-            reasons[winner.id] = `Champion (${winner.wins}W)`;
-          }
-        } else {
-          const aboveWinner = initialWinners[idx - 1];
-          if (winner.inCycle && aboveWinner.inCycle && winner.elo && aboveWinner.elo) {
-            reasons[winner.id] = `Elo ${winner.elo}`;
-          } else if (winner.inCycle && winner.elo) {
-            reasons[winner.id] = `${winner.wins}W (Elo ${winner.elo})`;
-          } else {
-            const winDiff = aboveWinner.wins - winner.wins;
-            if (winDiff === 0 && winner.elo) {
-              reasons[winner.id] = `${winner.wins}W (Elo ${winner.elo})`;
-            } else {
-              reasons[winner.id] = `${winner.wins} wins`;
-            }
-          }
-        }
-      });
+      // Generate H2H-based ranking reasons
+      const reasons = generateRankingReasons(initialWinners);
       setRankingReasons(reasons);
     }
   }, [open, rankings.length, initialWinners]);
@@ -283,46 +265,15 @@ export const RankingModal = ({
       if ((isDifferentData && initialWinners.length === 0) || 
           (isDifferentData && !hasSubmitted)) {
         console.log('✅ Syncing rankings state with NEW winners:', winners);
-        setInitialWinners(winners); // Preserve the data internally
+        setInitialWinners(winners);
         setRankings(winners.slice(0, 3));
-        const available = winners.slice(3);
-        setAvailableImages(available);
+        setAvailableImages(winners); // Pass ALL images for swapping
         
-        console.log('🎯 Available images for swapping:', available.length, available.map(a => a.model_name));
-        console.log('🎯 Top 3 rankings:', winners.slice(0, 3).map((w, i) => `${i + 1}. ${w.model_name} (${w.wins}W, Elo: ${w.elo || 'N/A'}, inCycle: ${w.inCycle})`));
+        console.log('🎯 Available images for swapping:', winners.length, winners.map(a => a.model_name));
+        console.log('🎯 Top 3 rankings:', winners.slice(0, 3).map((w, i) => `${i + 1}. ${w.model_name} (${w.wins}W, Elo: ${w.elo || 'N/A'}, inCycle: ${w.inCycle}, H2H: ${JSON.stringify(w.h2hRelationships || {})})`));
         
-        // Calculate improved ranking reasons that show the algorithm's logic
-        const reasons: Record<string, string> = {};
-        winners.slice(0, 3).forEach((winner, idx) => {
-          if (idx === 0) {
-            // First place: Show if it's a cycle or champion
-            if (winner.inCycle && winner.elo) {
-              reasons[winner.id] = `Champion (Elo ${winner.elo})`;
-            } else {
-              reasons[winner.id] = `Champion (${winner.wins}W)`;
-            }
-          } else {
-            // 2nd and 3rd place: Show how they rank relative to those above
-            const aboveWinner = winners[idx - 1];
-            
-            // Check direct head-to-head relationship
-            if (winner.inCycle && aboveWinner.inCycle && winner.elo && aboveWinner.elo) {
-              // Both in cycle, ranked by Elo
-              reasons[winner.id] = `Elo ${winner.elo}`;
-            } else if (winner.inCycle && winner.elo) {
-              // In cycle but above wasn't
-              reasons[winner.id] = `${winner.wins}W (Elo ${winner.elo})`;
-            } else {
-              // Simple win-based ranking
-              const winDiff = aboveWinner.wins - winner.wins;
-              if (winDiff === 0 && winner.elo) {
-                reasons[winner.id] = `${winner.wins}W (Elo ${winner.elo})`;
-              } else {
-                reasons[winner.id] = `${winner.wins} wins`;
-              }
-            }
-          }
-        });
+        // Generate H2H-based ranking reasons
+        const reasons = generateRankingReasons(winners);
         setRankingReasons(reasons);
         
         setRatings({
@@ -343,6 +294,47 @@ export const RankingModal = ({
       setTimeout(() => setHasSubmitted(false), 500);
     }
   }, [open]);
+
+  // Generate ranking reasons based on H2H data
+  const generateRankingReasons = (allWinners: ImageWithWins[]): Record<string, string> => {
+    const reasons: Record<string, string> = {};
+    
+    allWinners.slice(0, 3).forEach((winner, idx) => {
+      if (idx === 0) {
+        // Champion - check if beat both below
+        if (winner.h2hRelationships) {
+          const beatCount = Object.values(winner.h2hRelationships)
+            .filter((r: any) => r.wins > r.losses).length;
+          
+          if (beatCount === 2) {
+            reasons[winner.id] = `Champion (beat both below)`;
+          } else if (beatCount === 1) {
+            reasons[winner.id] = `Champion (beat one below)`;
+          } else {
+            reasons[winner.id] = `Champion (${winner.wins}W, Elo ${winner.elo})`;
+          }
+        } else {
+          reasons[winner.id] = `Champion (${winner.wins}W)`;
+        }
+      } else {
+        // 2nd and 3rd - show relationship to above
+        const aboveWinner = allWinners[idx - 1];
+        const h2h = winner.h2hRelationships?.[aboveWinner.id];
+        
+        if (h2h && h2h.wins > h2h.losses) {
+          reasons[winner.id] = `${winner.wins}W (beat #${idx}, Elo ${winner.elo})`;
+        } else if (h2h && h2h.wins < h2h.losses) {
+          reasons[winner.id] = `${winner.wins}W (lost to #${idx})`;
+        } else if (winner.elo) {
+          reasons[winner.id] = `${winner.wins}W (Elo ${winner.elo})`;
+        } else {
+          reasons[winner.id] = `${winner.wins} wins`;
+        }
+      }
+    });
+    
+    return reasons;
+  };
 
   const loadQualityMetrics = async () => {
     const metrics = await calculateMetrics();
@@ -648,7 +640,7 @@ export const RankingModal = ({
         </DndContext>
 
         {/* View Other Images Section */}
-        {availableImages.length > 0 && (
+        {availableImages.length > 3 && (
           <div className="border-t pt-4 mt-6">
             <button
               onClick={() => setShowAllImages(!showAllImages)}
@@ -656,14 +648,14 @@ export const RankingModal = ({
             >
               <span className="flex items-center gap-2">
                 <ArrowDownUp className="w-4 h-4" />
-                View Other Images ({availableImages.length})
+                View Other Images ({availableImages.length - 3})
               </span>
               {showAllImages ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             
             {showAllImages && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {availableImages.map((img) => (
+                {availableImages.slice(3).map((img) => (
                   <div key={img.id} className="group relative rounded-lg border overflow-hidden hover:border-primary transition-colors">
                     <div className="aspect-square">
                       <img
@@ -687,6 +679,43 @@ export const RankingModal = ({
                         ))}
                       </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Head-to-Head Stats Section */}
+        {rankings.length === 3 && rankings[0].h2hRelationships && (
+          <div className="border-t pt-4 mt-6">
+            <button
+              onClick={() => setShowH2HStats(!showH2HStats)}
+              className="flex items-center justify-between w-full text-sm font-medium hover:text-primary transition-colors"
+            >
+              <span>View Head-to-Head Records</span>
+              {showH2HStats ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            
+            {showH2HStats && (
+              <div className="mt-3 space-y-3 text-sm">
+                {rankings.map((img, idx) => (
+                  <div key={img.id} className="border-l-2 border-primary/50 pl-3">
+                    <p className="font-medium">
+                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'} {img.model_name}
+                    </p>
+                    {img.h2hRelationships && Object.entries(img.h2hRelationships).map(([otherId, record]: any) => {
+                      const other = rankings.find(r => r.id === otherId);
+                      if (!other) return null;
+                      
+                      return (
+                        <p key={otherId} className="text-xs text-muted-foreground ml-4">
+                          vs {other.model_name}: {record.wins}-{record.losses}
+                          {record.wins > record.losses && ' ✅'}
+                          {record.wins < record.losses && ' ❌'}
+                        </p>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
