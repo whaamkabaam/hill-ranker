@@ -105,7 +105,11 @@ const ImageRanker = () => {
 
   const handleSkip = () => {
     setShowRanking(false);
-    setWinners([]);
+    
+    // Add delay before clearing winners
+    setTimeout(() => {
+      setWinners([]);
+    }, 300);
     
     if (currentPromptIndex < prompts.length - 1) {
       setCurrentPromptIndex(currentPromptIndex + 1);
@@ -117,7 +121,13 @@ const ImageRanker = () => {
   };
 
   const handleRankingComplete = async () => {
+    // Don't clear winners until AFTER modal closes
     setShowRanking(false);
+    
+    // Add delay to ensure modal close animation completes
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // NOW safe to clear winners
     setWinners([]);
     
     // Check for next uncompleted prompt

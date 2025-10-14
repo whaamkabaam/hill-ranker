@@ -370,7 +370,7 @@ export const RankingModal = ({
       }
 
       // Update comparison session with final quality metrics
-      await supabase
+      const { error: sessionUpdateError } = await supabase
         .from("comparison_sessions")
         .update({
           consistency_score: metrics?.consistencyScore || null,
@@ -381,6 +381,11 @@ export const RankingModal = ({
         })
         .eq('user_id', user.id)
         .eq('prompt_id', promptId);
+      
+      if (sessionUpdateError) {
+        console.error('⚠️ Error updating session metrics:', sessionUpdateError);
+        // Non-critical - don't throw, just log
+      }
 
       toast.success("Rankings saved successfully!");
       setHasSubmitted(true);

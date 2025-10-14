@@ -280,16 +280,24 @@ export const ComparisonView = ({
         if (existingSession) {
           setSessionId(existingSession.id);
         } else {
-          const { data: newSession } = await supabase
+          const { data: newSession, error: sessionError } = await supabase
             .from('comparison_sessions')
-            .insert({
+            .upsert({
               user_id: user.id,
               prompt_id: promptId,
               total_comparisons: estimatedTotal,
               completed_comparisons: 0,
+            }, {
+              onConflict: 'user_id,prompt_id',
+              ignoreDuplicates: false
             })
             .select()
             .single();
+          
+          if (sessionError) {
+            console.error('❌ Error creating/updating session:', sessionError);
+            throw sessionError;
+          }
           
           if (newSession) {
             setSessionId(newSession.id);
@@ -372,8 +380,8 @@ export const ComparisonView = ({
         return;
       }
 
-      // Ignore if images not loaded or animation in progress
-      if (!champion || !challenger || animationState !== 'idle') return;
+      // Ignore if images not loaded or animation in progress or vote pending
+      if (!champion || !challenger || animationState !== 'idle' || pendingVote) return;
 
       // Only handle arrow keys
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
@@ -411,6 +419,15 @@ export const ComparisonView = ({
     checkImageLoaded(champion.image_url, 'left');
     checkImageLoaded(challenger.image_url, 'right');
   }, [champion, challenger]);
+
+  const resetVotingStateAfterTournament = () => {
+    console.log('🔄 Resetting voting state after tournament...');
+    setVoteCache(new Set());
+    setPendingVote(false);
+    setAnimationState('idle');
+    setNewChallengerMounting(false);
+    setChampionTransitioning(false);
+  };
 
   const handleTournamentComplete = async () => {
     try {
@@ -476,9 +493,15 @@ export const ComparisonView = ({
       }
 
       onComplete(top3);
+      
+      // Reset voting state to prevent stale data
+      resetVotingStateAfterTournament();
     } catch (error) {
       console.error("Error completing tournament:", error);
       toast.error("Failed to calculate rankings");
+      
+      // Reset state even on error
+      resetVotingStateAfterTournament();
     }
   };
 
@@ -505,7 +528,10 @@ export const ComparisonView = ({
         challengerId: challenger.id,
         cacheKey: getVotePairKey(champion.id, challenger.id),
         cacheSize: voteCache.size,
-        cacheContents: Array.from(voteCache)
+        cacheContents: Array.from(voteCache),
+        animationState,
+        championTransitioning,
+        newChallengerMounting
       });
       return;
     }
@@ -752,11 +778,16 @@ export const ComparisonView = ({
       console.log('✨ Creating new session...');
       const { data: newSession, error: newSessionError } = await supabase
         .from('comparison_sessions')
-        .insert({
+        .upsert({
           user_id: user.id,
           prompt_id: promptId,
           total_comparisons: estimatedTotal,
           completed_comparisons: 0,
+          started_at: new Date().toISOString(),
+          completed_at: null,
+        }, {
+          onConflict: 'user_id,prompt_id',
+          ignoreDuplicates: false
         })
         .select()
         .single();
