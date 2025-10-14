@@ -42,8 +42,9 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
             transition={{ duration: 0.3 }}
           />
           {isKing && (
-            <div className="absolute top-4 left-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
-              👑 King
+            <div className="absolute top-4 left-4 bg-yellow-500/90 text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-lg">
+              <span className="text-base">👑</span>
+              Champion
             </div>
           )}
         </div>
