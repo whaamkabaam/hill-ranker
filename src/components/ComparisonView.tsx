@@ -361,8 +361,16 @@ export const ComparisonView = ({
   
   // Guard flag to prevent infinite loop
   const [isCompletingTournament, setIsCompletingTournament] = useState(false);
+  const [skipNextChampionAnimation, setSkipNextChampionAnimation] = useState(false);
   
   const estimatedTotal = Math.ceil(images.length * 2.5);
+
+  useEffect(() => {
+    if (skipNextChampionAnimation) {
+      // Reset the flag after the render cycle
+      setTimeout(() => setSkipNextChampionAnimation(false), 0);
+    }
+  }, [skipNextChampionAnimation]);
 
   // Initialize King-of-the-Hill tournament
   useEffect(() => {
@@ -722,9 +730,10 @@ export const ComparisonView = ({
       }
 
       const isChampionWinner = winner.id === champion.id;
-      
-      // Trigger exit animation
-      setAnimationState(isChampionWinner ? 'left-wins' : 'right-wins');
+      const animationTime = 400; // Unified animation time
+
+      // Trigger animation before DB call
+      setAnimationState(isChampionWinner ? 'left-wins' : 'right-wins-exit');
 
       // Record vote (champion is always on left, challenger on right)
       const { error } = await supabase.from("votes").insert({
@@ -758,7 +767,7 @@ export const ComparisonView = ({
       }
 
       // Wait for exit animation
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await new Promise(resolve => setTimeout(resolve, animationTime));
 
       if (isChampionWinner) {
         // Left wins: Champion defended throne, get new challenger
@@ -774,33 +783,25 @@ export const ComparisonView = ({
         setAnimationState('idle');
         setPendingVote(false);
       } else {
-        // Right wins: 3-stage animation sequence
-        console.log('🎬 Right wins: Starting 3-stage animation');
-        
-        // Stage 1: Exit left champion (300ms)
-        setAnimationState('right-wins-exit');
-        
+        // Challenger wins sequence
+        setSkipNextChampionAnimation(true); // Prevent re-animation
+        setAnimationState('right-wins-promote');
+
         setTimeout(() => {
-          // Stage 2: Promote right to left (300ms)
-          setAnimationState('right-wins-promote');
           setChampion(challenger);
-          
+          if (remainingImages.length > 0) {
+            setChallenger(remainingImages[0]);
+            setRemainingImages(prev => prev.slice(1));
+          } else {
+            setChallenger(null);
+          }
+          setAnimationState('right-wins-enter');
+
           setTimeout(() => {
-            // Stage 3: Enter new challenger (300ms)
-            setAnimationState('right-wins-enter');
-            if (remainingImages.length > 0) {
-              setChallenger(remainingImages[0]);
-              setRemainingImages(prev => prev.slice(1));
-            } else {
-              setChallenger(null);
-            }
-            
-            setTimeout(() => {
-              setAnimationState('idle');
-              setPendingVote(false);
-            }, 300);
-          }, 300);
-        }, 300);
+            setAnimationState('idle');
+            setPendingVote(false);
+          }, animationTime);
+        }, animationTime);
       }
       
     } catch (error: any) {
@@ -1026,12 +1027,11 @@ export const ComparisonView = ({
 
         {/* Comparison */}
         <div className="flex gap-8 items-start relative overflow-hidden">
-          {/* Champion (Left Side) - Exits when right wins */}
+          {/* Champion (Left Side) - Exits left when right wins, stays when left wins */}
           <div 
-            className={`flex-1 transition-all duration-300 ease-out ${
-              animationState === 'right-wins-exit' ? 'translate-x-[-120%] opacity-0' : 
-              animationState === 'right-wins-promote' ? 'translate-x-[-120%] opacity-0' :
-              animationState === 'right-wins-enter' ? 'translate-x-0 opacity-100' :
+            className={`flex-1 transition-all duration-300 ease-in-out ${
+              animationState === 'right-wins-exit' ? 'translate-x-[-120%] opacity-0' :
+              animationState === 'right-wins-promote' ? 'translate-x-0 opacity-100' : // Stay visible
               'translate-x-0 opacity-100'
             }`}
           >
@@ -1047,17 +1047,18 @@ export const ComparisonView = ({
               isKing={true}
               onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
               blindMode={true}
+              skipAnimation={skipNextChampionAnimation}
             />
           </div>
 
           {/* Challenger (Right Side) - Exits right when left wins, slides left when right wins */}
           <div 
-            className={`flex-1 ${
-              animationState === 'left-wins' ? 'transition-all duration-300 ease-out translate-x-[120%] opacity-0' :
-              animationState === 'right-wins-exit' ? 'transition-all duration-300 ease-out translate-x-0 opacity-100' :
-              animationState === 'right-wins-promote' ? 'transition-all duration-300 ease-out translate-x-[-100%] opacity-0' :
-              animationState === 'right-wins-enter' ? 'animate-slide-in-right' :
-              'transition-all duration-300 ease-out translate-x-0 opacity-100'
+            className={`flex-1 transition-all duration-300 ease-in-out ${
+              animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
+              animationState === 'right-wins-exit' ? 'translate-x-0 opacity-100' :
+              animationState === 'right-wins-promote' ? 'translate-x-[-100%]' :
+              animationState === 'right-wins-enter' ? 'translate-x-0 opacity-100' :
+              'translate-x-0 opacity-100'
             }`}
           >
             {!imagesLoaded.right && (

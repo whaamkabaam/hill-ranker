@@ -8,9 +8,10 @@ interface ImageCardProps {
   isKing?: boolean;
   onImageLoad?: () => void;
   blindMode?: boolean; // Hide model name during comparison
+  skipAnimation?: boolean; // Skip initial animation
 }
 
-export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blindMode = false }: ImageCardProps) => {
+export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blindMode = false, skipAnimation = false }: ImageCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const handleImageLoad = () => {
@@ -20,7 +21,7 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: side === "left" ? -50 : 50 }}
+      initial={skipAnimation ? false : { opacity: 0, x: side === "left" ? -50 : 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: side === "left" ? -100 : 100 }}
       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
