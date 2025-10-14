@@ -147,6 +147,45 @@ const detectCycles = (
  * Resolve rankings using graph-based approach with cycle detection
  * Handles circular dependencies by using Elo as tiebreaker within cycles
  */
+/**
+ * Calculate common opponent score
+ * If A and B never fought, but both fought C:
+ * - If A beat C and B lost to C, A > B
+ * - If both beat C, compare margin or Elo
+ */
+const getCommonOpponentScore = (
+  imageAId: string,
+  imageBId: string,
+  h2hWins: Record<string, Record<string, number>>,
+  allImages: ImageWithWins[]
+): number => {
+  let aAdvantage = 0;
+  
+  // Find all common opponents
+  allImages.forEach(opponent => {
+    if (opponent.id === imageAId || opponent.id === imageBId) return;
+    
+    const aBeatsOpponent = (h2hWins[imageAId]?.[opponent.id] || 0) > 0;
+    const bBeatsOpponent = (h2hWins[imageBId]?.[opponent.id] || 0) > 0;
+    const opponentBeatsA = (h2hWins[opponent.id]?.[imageAId] || 0) > 0;
+    const opponentBeatsB = (h2hWins[opponent.id]?.[imageBId] || 0) > 0;
+    
+    // A beat opponent but B didn't → +1 for A
+    if (aBeatsOpponent && !bBeatsOpponent) aAdvantage++;
+    
+    // B beat opponent but A didn't → -1 for A (advantage to B)
+    if (bBeatsOpponent && !aBeatsOpponent) aAdvantage--;
+    
+    // Opponent beat B but not A → +1 for A
+    if (opponentBeatsB && !opponentBeatsA) aAdvantage++;
+    
+    // Opponent beat A but not B → -1 for A
+    if (opponentBeatsA && !opponentBeatsB) aAdvantage--;
+  });
+  
+  return aAdvantage;
+};
+
 const resolveRankingsWithCycles = (
   rankedImages: ImageWithWins[],
   votes: any[]
@@ -192,26 +231,44 @@ const resolveRankingsWithCycles = (
     h2hWins[winnerId][loserId]++;
   });
   
-  // Custom sort function
+  // IMPROVED SORT FUNCTION
   const result = [...rankedImages].sort((a, b) => {
-    // Check if both are in a cycle together
     const aInCycle = inCycle.has(a.id);
     const bInCycle = inCycle.has(b.id);
     
-    // If both in cycle, use Elo
+    // 1. If both in cycle, use Elo
     if (aInCycle && bInCycle) {
       return (b.elo || 0) - (a.elo || 0);
     }
     
-    // Check head-to-head record (only if not in cycle)
+    // 2. Check DIRECT head-to-head record
     const aWinsVsB = h2hWins[a.id]?.[b.id] || 0;
     const bWinsVsA = h2hWins[b.id]?.[a.id] || 0;
     
-    if (aWinsVsB > bWinsVsA) return -1; // a should rank higher
-    if (bWinsVsA > aWinsVsB) return 1;  // b should rank higher
+    if (aWinsVsB > bWinsVsA) {
+      console.log(`  ✅ ${a.model_name} ranks higher: beat ${b.model_name} directly (${aWinsVsB}-${bWinsVsA})`);
+      return -1;
+    }
+    if (bWinsVsA > aWinsVsB) {
+      console.log(`  ✅ ${b.model_name} ranks higher: beat ${a.model_name} directly (${bWinsVsA}-${aWinsVsB})`);
+      return 1;
+    }
     
-    // If head-to-head is tied or no direct comparison, use Elo
-    return (b.elo || 0) - (a.elo || 0);
+    // 3. No direct h2h? Check COMMON OPPONENTS
+    const commonOpponentScore = getCommonOpponentScore(a.id, b.id, h2hWins, rankedImages);
+    if (commonOpponentScore > 0) {
+      console.log(`  ✅ ${a.model_name} ranks higher: better record vs common opponents (+${commonOpponentScore})`);
+      return -1;
+    }
+    if (commonOpponentScore < 0) {
+      console.log(`  ✅ ${b.model_name} ranks higher: better record vs common opponents (${commonOpponentScore})`);
+      return 1;
+    }
+    
+    // 4. LAST RESORT: Use Elo (but log it)
+    const eloDiff = (b.elo || 0) - (a.elo || 0);
+    console.log(`  ⚖️ ${eloDiff > 0 ? b.model_name : a.model_name} ranks higher: Elo tiebreaker (${a.model_name}:${a.elo} vs ${b.model_name}:${b.elo})`);
+    return eloDiff;
   });
   
   console.log('✅ Ranking resolution complete');

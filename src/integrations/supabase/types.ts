@@ -249,6 +249,7 @@ export type Database = {
           transitivity_violations: number | null
           user_email: string
           user_id: string | null
+          user_modified_order: boolean | null
           vote_certainty: number | null
         }
         Insert: {
@@ -269,6 +270,7 @@ export type Database = {
           transitivity_violations?: number | null
           user_email: string
           user_id?: string | null
+          user_modified_order?: boolean | null
           vote_certainty?: number | null
         }
         Update: {
@@ -289,6 +291,7 @@ export type Database = {
           transitivity_violations?: number | null
           user_email?: string
           user_id?: string | null
+          user_modified_order?: boolean | null
           vote_certainty?: number | null
         }
         Relationships: [

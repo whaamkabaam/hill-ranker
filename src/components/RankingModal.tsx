@@ -50,9 +50,10 @@ interface SortableImageProps {
   rank: number;
   rating: number;
   onRatingChange: (value: number) => void;
+  rankingReason?: string;
 }
 
-const SortableImage = ({ image, rank, rating, onRatingChange }: SortableImageProps) => {
+const SortableImage = ({ image, rank, rating, onRatingChange, rankingReason }: SortableImageProps) => {
   const {
     attributes,
     listeners,
@@ -100,12 +101,21 @@ const SortableImage = ({ image, rank, rating, onRatingChange }: SortableImagePro
               <div className={`absolute top-2 left-2 bg-background/90 backdrop-blur-sm text-foreground rounded-full w-12 h-12 flex items-center justify-center font-bold text-2xl border-2 ${rank === 0 ? 'border-yellow-500' : rank === 1 ? 'border-gray-400' : 'border-amber-600'}`}>
                 {rankIcons[rank]}
               </div>
-              <div className="absolute top-2 right-2 bg-background/90 backdrop-blur-sm rounded-full px-3 py-1">
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium">{image.wins} wins</span>
+              <div className="absolute top-2 right-2 space-y-2">
+                <div className="bg-background/90 backdrop-blur-sm rounded-full px-3 py-1">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">{image.wins} wins</span>
+                  </div>
                 </div>
+                
+                {rankingReason && (
+                  <div className="bg-blue-500/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs text-white max-w-[150px]">
+                    {rankingReason}
+                  </div>
+                )}
               </div>
+              
               {image.inCycle && (
                 <div className="absolute bottom-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium text-black">
                   ⚔️ Circular preference
@@ -155,6 +165,7 @@ export const RankingModal = ({
   const [rankings, setRankings] = useState<ImageWithWins[]>(
     winners && winners.length >= 3 ? winners.slice(0, 3) : []
   );
+  const [rankingReasons, setRankingReasons] = useState<Record<string, string>>({});
   const [ratings, setRatings] = useState<Record<string, number>>(() => {
     if (!winners || winners.length < 3) return {};
     return {
@@ -177,6 +188,22 @@ export const RankingModal = ({
     if (winners && winners.length >= 3 && !hasSubmitted) {
       console.log('✅ Syncing rankings state with winners:', winners);
       setRankings(winners.slice(0, 3));
+      
+      // Calculate ranking reasons
+      const reasons: Record<string, string> = {};
+      winners.slice(0, 3).forEach((winner, idx) => {
+        if (idx === 0) {
+          reasons[winner.id] = winner.inCycle 
+            ? "Highest Elo in cycle" 
+            : "Best overall record";
+        } else {
+          reasons[winner.id] = winner.inCycle
+            ? "Elo tiebreaker"
+            : `${winner.wins} tournament wins`;
+        }
+      });
+      setRankingReasons(reasons);
+      
       setRatings({
         [winners[0].id]: 5,
         [winners[1].id]: 5,
@@ -240,7 +267,18 @@ export const RankingModal = ({
       setRankings((items) => {
         const oldIndex = items.findIndex((i) => i.id === active.id);
         const newIndex = items.findIndex((i) => i.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+        
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        
+        // Log user override
+        console.log('🔄 User reordered:', {
+          image: items[oldIndex].model_name,
+          from: oldIndex + 1,
+          to: newIndex + 1,
+          reason: 'Manual drag-and-drop'
+        });
+        
+        return reordered;
       });
     }
   };
@@ -328,6 +366,7 @@ export const RankingModal = ({
         third_id: rankings[2].id,
         rating_first: ratings[rankings[0].id],
         rating_second: ratings[rankings[1].id],
+        user_modified_order: JSON.stringify(rankings.map(r => r.id)) !== JSON.stringify(winners.slice(0, 3).map(w => w.id)),
         rating_third: ratings[rankings[2].id],
         completion_time_seconds: completionTime,
         // Quality metrics
@@ -417,10 +456,15 @@ export const RankingModal = ({
           <DialogTitle className="text-2xl">🎉 Ranking Complete - Models Revealed!</DialogTitle>
           <DialogDescription className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              These were the top 3 based on your blind votes, adjusted for direct head-to-head results. When two images competed directly, the winner is ranked higher. Drag to reorder if you'd like to adjust.
+              These are the top 3 based on your votes, ranked using this priority:
             </p>
-            <p className="text-xs text-muted-foreground">
-              Rankings are based on your head-to-head comparisons. When circular preferences exist (e.g., A beats B, B beats C, C beats A), Elo scores are used as a tiebreaker within that group.
+            <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-1">
+              <li><strong>Direct matchups:</strong> If two images competed, the winner ranks higher</li>
+              <li><strong>Common opponents:</strong> If they didn't face each other, we compare their records against shared opponents</li>
+              <li><strong>Elo rating:</strong> As a last resort, overall performance score</li>
+            </ol>
+            <p className="text-xs text-muted-foreground mt-2">
+              <strong>You can drag to reorder</strong> if you disagree with the suggested ranking. Your final order will be saved.
             </p>
           </DialogDescription>
         </DialogHeader>
@@ -444,6 +488,7 @@ export const RankingModal = ({
                   onRatingChange={(value) =>
                     setRatings({ ...ratings, [image.id]: value })
                   }
+                  rankingReason={rankingReasons[image.id]}
                 />
               ))}
             </div>
