@@ -136,6 +136,30 @@ export type Database = {
           },
         ]
       }
+      pending_profile_images: {
+        Row: {
+          email: string
+          id: string
+          image_url: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          email: string
+          id?: string
+          image_url: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          email?: string
+          id?: string
+          image_url?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null

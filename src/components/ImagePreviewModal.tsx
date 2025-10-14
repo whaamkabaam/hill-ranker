@@ -27,6 +27,10 @@ export const ImagePreviewModal = ({
     if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent default and stop propagation to avoid triggering other handlers
+      e.preventDefault();
+      e.stopPropagation();
+      
       if (e.key === "Escape") {
         onOpenChange(false);
       } else if (e.key === "ArrowLeft" && onNavigate && currentIndex !== undefined && currentIndex > 0) {

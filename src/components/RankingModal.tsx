@@ -59,9 +59,10 @@ interface SortableImageProps {
   availableImages: ImageWithWins[];
   onReplace: (imageToSwap: ImageWithWins) => void;
   isSwapped?: boolean;
+  onImageClick?: () => void;
 }
 
-const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReason, availableImages, onReplace, isSwapped }: SortableImageProps) => {
+const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReason, availableImages, onReplace, isSwapped, onImageClick }: SortableImageProps) => {
   const {
     attributes,
     listeners,
@@ -109,9 +110,13 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
         </p>
       </div>
 
-      {/* Image - clickable via parent wrapper for preview */}
+      {/* Image - clickable for preview */}
       <div 
         className="aspect-square rounded-md overflow-hidden mb-3 border border-border cursor-pointer hover:border-primary transition-colors"
+        onClick={(e) => {
+          e.stopPropagation();
+          onImageClick?.();
+        }}
       >
         <img
           src={image.image_url}
@@ -746,20 +751,20 @@ export const RankingModal = ({
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {rankings.map((image, index) => (
-                <div key={image.id} onClick={() => handleImageClick(image, index)}>
-                  <SortableImageCompact
-                    image={image}
-                    rank={index}
-                    rating={ratings[image.id]}
-                    onRatingChange={(value) =>
-                      setRatings({ ...ratings, [image.id]: value })
-                    }
-                    rankingReason={rankingReasons[image.id]}
-                    availableImages={computedAvailableImages}
-                    onReplace={(imageToSwap) => handleSwapImage(imageToSwap, index)}
-                    isSwapped={swappedImageIds.includes(image.id)}
-                  />
-                </div>
+                <SortableImageCompact
+                  key={image.id}
+                  image={image}
+                  rank={index}
+                  rating={ratings[image.id]}
+                  onRatingChange={(value) =>
+                    setRatings({ ...ratings, [image.id]: value })
+                  }
+                  rankingReason={rankingReasons[image.id]}
+                  availableImages={computedAvailableImages}
+                  onReplace={(imageToSwap) => handleSwapImage(imageToSwap, index)}
+                  isSwapped={swappedImageIds.includes(image.id)}
+                  onImageClick={() => handleImageClick(image, index)}
+                />
               ))}
             </div>
           </SortableContext>

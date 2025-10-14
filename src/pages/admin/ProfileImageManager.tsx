@@ -91,13 +91,36 @@ const ProfileImageManager = () => {
   };
 
   const findMatchingProfile = async (email: string): Promise<Profile | undefined> => {
-    const { data } = await supabase
+    // First check if profile exists
+    const { data: profile } = await supabase
       .from('profiles')
       .select('id, email, full_name, job_title, profile_image_url')
       .eq('email', email)
       .maybeSingle();
 
-    return data || undefined;
+    if (profile) {
+      return profile;
+    }
+
+    // If no profile, check if email is in allowed_users (for pre-staging)
+    const { data: allowedUser } = await supabase
+      .from('allowed_users')
+      .select('email')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (allowedUser) {
+      // Return a pseudo-profile for pre-staging (id will be generated during upload)
+      return {
+        id: 'pending',
+        email: allowedUser.email,
+        full_name: 'Pending User',
+        job_title: undefined,
+        profile_image_url: undefined,
+      };
+    }
+
+    return undefined;
   };
 
   const handleFiles = async (files: FileList | File[]) => {
@@ -179,6 +202,8 @@ const ProfileImageManager = () => {
   const uploadImages = async () => {
     setIsUploading(true);
     
+    const { data: { user } } = await supabase.auth.getUser();
+    
     for (let i = 0; i < uploadItems.length; i++) {
       const item = uploadItems[i];
       const targetEmail = item.manualEmail || item.extractedEmail;
@@ -186,7 +211,7 @@ const ProfileImageManager = () => {
 
       if (!profile) {
         setUploadItems(prev => prev.map((it, idx) => 
-          idx === i ? { ...it, status: 'error', error: 'No matching profile found' } : it
+          idx === i ? { ...it, status: 'error', error: 'No matching profile or allowed user' } : it
         ));
         continue;
       }
@@ -198,7 +223,7 @@ const ProfileImageManager = () => {
       try {
         // Upload to storage
         const fileExt = item.file.name.split('.').pop();
-        const fileName = `${profile.id}_${Date.now()}.${fileExt}`;
+        const fileName = `${targetEmail}_${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from('profile-images')
@@ -214,13 +239,29 @@ const ProfileImageManager = () => {
           .from('profile-images')
           .getPublicUrl(fileName);
 
-        // Update profile
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ profile_image_url: publicUrl })
-          .eq('id', profile.id);
+        // Check if this is an existing profile or pre-staging for future signup
+        if (profile.id !== 'pending') {
+          // Update existing profile
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ profile_image_url: publicUrl })
+            .eq('id', profile.id);
 
-        if (updateError) throw updateError;
+          if (updateError) throw updateError;
+        } else {
+          // Pre-stage image for future signup
+          const { error: pendingError } = await supabase
+            .from('pending_profile_images')
+            .upsert({
+              email: targetEmail,
+              image_url: publicUrl,
+              uploaded_by: user?.id
+            }, {
+              onConflict: 'email'
+            });
+
+          if (pendingError) throw pendingError;
+        }
 
         setUploadItems(prev => prev.map((it, idx) => 
           idx === i ? { ...it, status: 'success' } : it
@@ -233,9 +274,15 @@ const ProfileImageManager = () => {
     }
 
     setIsUploading(false);
+    
+    const successCount = uploadItems.filter(item => item.status === 'success').length;
+    const pendingCount = uploadItems.filter(item => item.matchedProfile?.id === 'pending').length;
+    
     toast({
       title: "Upload complete",
-      description: "Profile images have been updated",
+      description: pendingCount > 0 
+        ? `${successCount} images uploaded (${pendingCount} pre-staged for future signups)`
+        : `${successCount} profile images updated`,
     });
     
     // Refresh existing profiles
@@ -372,7 +419,9 @@ const ProfileImageManager = () => {
                         </p>
                         {item.matchedProfile ? (
                           <p className="text-sm text-green-600">
-                            ✓ Matched: {item.matchedProfile.full_name} ({item.matchedProfile.email})
+                            ✓ {item.matchedProfile.id === 'pending' 
+                              ? `Pre-staged for: ${item.matchedProfile.email}` 
+                              : `Matched: ${item.matchedProfile.full_name} (${item.matchedProfile.email})`}
                           </p>
                         ) : (
                           <div className="space-y-2">
