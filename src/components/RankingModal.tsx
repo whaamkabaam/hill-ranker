@@ -172,9 +172,9 @@ export const RankingModal = ({
     qualityFlags: string[];
   } | null>(null);
 
-  // Sync state when winners prop changes
+  // Sync state when winners prop changes (but not if already submitted)
   useEffect(() => {
-    if (winners && winners.length >= 3) {
+    if (winners && winners.length >= 3 && !hasSubmitted) {
       console.log('✅ Syncing rankings state with winners:', winners);
       setRankings(winners.slice(0, 3));
       setRatings({
@@ -186,6 +186,13 @@ export const RankingModal = ({
       loadQualityMetrics();
     }
   }, [winners]);
+
+  // Reset submission guard when modal closes
+  useEffect(() => {
+    if (!open) {
+      setHasSubmitted(false);
+    }
+  }, [open]);
 
   const loadQualityMetrics = async () => {
     const metrics = await calculateMetrics();
@@ -290,6 +297,11 @@ export const RankingModal = ({
   };
 
   const handleSubmit = async () => {
+    if (hasSubmitted) {
+      toast.info("Rankings already submitted!");
+      return;
+    }
+
     if (!validateRankings()) {
       return;
     }
@@ -331,15 +343,31 @@ export const RankingModal = ({
       console.log('💾 Saving ranking with metrics:', rankingData);
 
       // Save ranking (upsert to handle duplicate submissions)
-      await supabase.from("rankings").upsert(rankingData, {
-        onConflict: 'prompt_id,user_email'
-      });
+      const { error: rankingError } = await supabase
+        .from("rankings")
+        .upsert(rankingData, {
+          onConflict: 'prompt_id,user_email'
+        });
 
-      // Mark prompt as completed
-      await supabase.from("prompt_completions").upsert({
-        user_id: user.id,
-        prompt_id: promptId,
-      });
+      if (rankingError) {
+        console.error('Ranking upsert error:', rankingError);
+        throw rankingError;
+      }
+
+      // Mark prompt as completed (upsert to handle duplicates)
+      const { error: completionError } = await supabase
+        .from("prompt_completions")
+        .upsert({
+          user_id: user.id,
+          prompt_id: promptId,
+        }, {
+          onConflict: 'user_id,prompt_id'
+        });
+
+      if (completionError) {
+        console.error('Completion upsert error:', completionError);
+        // Don't throw - this is non-critical
+      }
 
       // Update comparison session with final quality metrics
       await supabase
@@ -360,11 +388,15 @@ export const RankingModal = ({
     } catch (error: any) {
       console.error("Error saving rankings:", error);
       
-      // Handle duplicate submission gracefully
-      if (error?.code === '409' || error?.code === '23505' || error?.message?.includes('duplicate')) {
+      // Handle specific error codes
+      if (error?.code === '403' || error?.code === 'PGRST301') {
+        toast.error("Permission denied. Please try refreshing the page.");
+      } else if (error?.code === '409' || error?.code === '23505' || error?.message?.includes('duplicate')) {
         toast.success("Rankings already saved!");
         setHasSubmitted(true);
         onComplete();
+      } else if (error?.message?.includes('upsert')) {
+        toast.error("Unable to save rankings. This prompt may have already been completed.");
       } else {
         toast.error("Failed to save rankings");
       }
