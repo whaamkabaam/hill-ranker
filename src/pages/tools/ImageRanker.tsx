@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ComparisonView } from "@/components/ComparisonView";
 import { RankingModal } from "@/components/RankingModal";
-import { PromptProgress } from "@/components/PromptProgress";
+import { GlobalLeaderboard } from "@/components/GlobalLeaderboard";
 import { ReviewRankings } from "@/components/ReviewRankings";
 import OnboardingTutorial from "@/components/OnboardingTutorial";
 import { supabase } from "@/integrations/supabase/client";
@@ -363,7 +363,7 @@ const ImageRanker = () => {
             </TabsContent>
 
             <TabsContent value="progress">
-              <PromptProgress userId={user?.id || ''} />
+              <GlobalLeaderboard />
             </TabsContent>
 
             <TabsContent value="history">
