@@ -369,6 +369,9 @@ export const ComparisonView = ({
   // NEW: Track champion's exit animation separately
   const [isChampionAnimatingOut, setIsChampionAnimatingOut] = useState(false);
   
+  // NEW: Track promoted champion during transition
+  const [promotedChampion, setPromotedChampion] = useState<Image | null>(null);
+  
   const estimatedTotal = Math.ceil(images.length * 2.5);
 
   useEffect(() => {
@@ -378,18 +381,7 @@ export const ComparisonView = ({
     }
   }, [skipNextChampionAnimation]);
 
-  // Handle the challenger reset and entrance animation
-  useEffect(() => {
-    if (isResettingChallenger) {
-      // After snapping off-screen, animate the new challenger in from the right
-      const timer = setTimeout(() => {
-        setIsResettingChallenger(false);
-        setAnimationState('idle');
-        setPendingVote(false);
-      }, 50); // Brief delay allows CSS transition to kick in
-      return () => clearTimeout(timer);
-    }
-  }, [isResettingChallenger]);
+  // REMOVED: No longer need the isResettingChallenger useEffect
 
   // Initialize King-of-the-Hill tournament
   useEffect(() => {
@@ -796,24 +788,33 @@ export const ComparisonView = ({
           setPendingVote(false);
         }, animationTime);
       } else {
-        // Right wins: Multi-step animation.
-        setIsChampionAnimatingOut(true);      // 1. Champion (left) slides out.
-        setAnimationState('right-wins-promote'); // 2. Challenger (right) slides to the left.
-
+        // Right wins: Three-phase animation
+        // Phase 1: Set up the promotion
+        setAnimationState('right-wins-promote');
+        setIsChampionAnimatingOut(true);
+        setPromotedChampion(challenger); // Store who's being promoted
+        
         setTimeout(() => {
-          // This happens after the first part of the animation.
-          setSkipNextChampionAnimation(true); // Don't animate the new champion.
-          setChampion(challenger);             // The winner is the new champion.
-
-          // Prepare for the new challenger.
-          setIsResettingChallenger(true);      // 3. Instantly move challenger container off-screen.
+          // Phase 2: Complete the promotion (after animation finishes)
+          setChampion(challenger); // Update the actual champion
+          setPromotedChampion(null); // Clear the transition state
+          setIsChampionAnimatingOut(false);
+          
+          // Phase 3: Bring in new challenger WITHOUT triggering champion animation
+          setSkipNextChampionAnimation(true);
           if (remainingImages.length > 0) {
             setChallenger(remainingImages[0]);
             setRemainingImages(prev => prev.slice(1));
           } else {
             setChallenger(null);
           }
-          setIsChampionAnimatingOut(false);
+          
+          // Reset after a brief moment to allow new challenger to render
+          setTimeout(() => {
+            setAnimationState('idle');
+            setPendingVote(false);
+            setSkipNextChampionAnimation(false);
+          }, 50);
         }, animationTime);
       }
 
@@ -823,7 +824,7 @@ export const ComparisonView = ({
       // Reset all animation states on error
       setAnimationState('idle');
       setIsChampionAnimatingOut(false);
-      setIsResettingChallenger(false);
+      setPromotedChampion(null);
       setPendingVote(false);
       setVoteCache(prev => {
         const newCache = new Set(prev);
@@ -1038,53 +1039,84 @@ export const ComparisonView = ({
         <div className="flex gap-8 items-start relative overflow-hidden">
           {/* Champion (Left Side) */}
           <div 
-            className={`flex-1 transition-all duration-300 ease-in-out ${
-              isChampionAnimatingOut ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'
-            }`}
+            className="flex-1 relative"
+            style={{
+              transform: isChampionAnimatingOut ? 'translateX(-100%)' : 'translateX(0)',
+              opacity: isChampionAnimatingOut ? 0 : 1,
+              transition: 'transform 300ms ease-in-out, opacity 300ms ease-in-out'
+            }}
           >
-            {!imagesLoaded.left && (
+            {champion && !imagesLoaded.left && (
               <div className="absolute inset-0 z-10 pointer-events-none">
                 <ImageCardSkeleton />
               </div>
             )}
-            <ImageCard
-              imageUrl={champion.image_url}
-              modelName={champion.model_name}
-              side="left"
-              isKing={true}
-              onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
-              blindMode={true}
-              skipAnimation={skipNextChampionAnimation}
-            />
+            {champion && (
+              <ImageCard
+                key={`champion-${champion.id}`}
+                imageUrl={champion.image_url}
+                modelName={champion.model_name}
+                side="left"
+                isKing={true}
+                onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
+                blindMode={true}
+                skipAnimation={skipNextChampionAnimation}
+              />
+            )}
           </div>
+
+          {/* Promoted Champion (During Transition Only) */}
+          {promotedChampion && animationState === 'right-wins-promote' && (
+            <div 
+              className="flex-1 absolute left-0"
+              style={{
+                transform: 'translateX(0)',
+                opacity: 1,
+                transition: 'none'
+              }}
+            >
+              <ImageCard
+                key={`promoted-${promotedChampion.id}`}
+                imageUrl={promotedChampion.image_url}
+                modelName={promotedChampion.model_name}
+                side="left"
+                isKing={true}
+                onImageLoad={() => {}}
+                blindMode={true}
+                skipAnimation={true}
+              />
+            </div>
+          )}
 
           {/* Challenger (Right Side) */}
           <div 
-            className={`flex-1 ${
-              isResettingChallenger
-                ? 'transition-none opacity-0 translate-x-full'
-                : `transition-all duration-300 ease-in-out ${
-                    animationState === 'left-wins'
-                      ? 'opacity-0 translate-x-full'
-                      : animationState === 'right-wins-promote'
-                      ? 'opacity-100 -translate-x-full'
-                      : 'opacity-100 translate-x-0'
-                  }`
-            }`}
+            className="flex-1 relative"
+            style={{
+              transform: 
+                animationState === 'left-wins' ? 'translateX(100%)' :
+                animationState === 'right-wins-promote' ? 'translateX(-100%)' :
+                'translateX(0)',
+              opacity: animationState === 'left-wins' ? 0 : 1,
+              transition: 'transform 300ms ease-in-out, opacity 300ms ease-in-out'
+            }}
           >
-            {!imagesLoaded.right && (
+            {challenger && !imagesLoaded.right && (
               <div className="absolute inset-0 z-10 pointer-events-none">
                 <ImageCardSkeleton />
               </div>
             )}
-            <ImageCard
-              imageUrl={challenger.image_url}
-              modelName={challenger.model_name}
-              side="right"
-              isKing={false}
-              onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
-              blindMode={true}
-            />
+            {challenger && (
+              <ImageCard
+                key={`challenger-${challenger.id}`}
+                imageUrl={challenger.image_url}
+                modelName={challenger.model_name}
+                side="right"
+                isKing={false}
+                onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
+                blindMode={true}
+                skipAnimation={false}
+              />
+            )}
           </div>
         </div>
 

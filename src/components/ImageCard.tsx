@@ -24,7 +24,7 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
       initial={skipAnimation ? false : { opacity: 0, x: side === "left" ? -50 : 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: side === "left" ? -100 : 100 }}
-      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       className="relative flex flex-col gap-4"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
