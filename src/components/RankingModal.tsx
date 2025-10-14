@@ -34,6 +34,7 @@ interface Image {
 
 interface ImageWithWins extends Image {
   wins: number;
+  elo?: number;
   inCycle?: boolean;
 }
 
@@ -237,14 +238,34 @@ export const RankingModal = ({
     if (open && rankings.length === 0 && initialWinners.length >= 3) {
       console.log('🔄 Recovering rankings from initialWinners');
       setRankings(initialWinners.slice(0, 3));
-      setAvailableImages(initialWinners.slice(3));
+      const available = initialWinners.slice(3);
+      setAvailableImages(available);
       
+      console.log('🎯 [Recovery] Available images for swapping:', available.length);
+      
+      // Use same improved ranking reasons
       const reasons: Record<string, string> = {};
       initialWinners.slice(0, 3).forEach((winner, idx) => {
         if (idx === 0) {
-          reasons[winner.id] = winner.inCycle ? "Highest Elo" : "Best record";
+          if (winner.inCycle && winner.elo) {
+            reasons[winner.id] = `Champion (Elo ${winner.elo})`;
+          } else {
+            reasons[winner.id] = `Champion (${winner.wins}W)`;
+          }
         } else {
-          reasons[winner.id] = winner.inCycle ? "Elo" : `${winner.wins} wins`;
+          const aboveWinner = initialWinners[idx - 1];
+          if (winner.inCycle && aboveWinner.inCycle && winner.elo && aboveWinner.elo) {
+            reasons[winner.id] = `Elo ${winner.elo}`;
+          } else if (winner.inCycle && winner.elo) {
+            reasons[winner.id] = `${winner.wins}W (Elo ${winner.elo})`;
+          } else {
+            const winDiff = aboveWinner.wins - winner.wins;
+            if (winDiff === 0 && winner.elo) {
+              reasons[winner.id] = `${winner.wins}W (Elo ${winner.elo})`;
+            } else {
+              reasons[winner.id] = `${winner.wins} wins`;
+            }
+          }
         }
       });
       setRankingReasons(reasons);
@@ -264,19 +285,42 @@ export const RankingModal = ({
         console.log('✅ Syncing rankings state with NEW winners:', winners);
         setInitialWinners(winners); // Preserve the data internally
         setRankings(winners.slice(0, 3));
-        setAvailableImages(winners.slice(3));
+        const available = winners.slice(3);
+        setAvailableImages(available);
         
-        // Calculate ranking reasons
+        console.log('🎯 Available images for swapping:', available.length, available.map(a => a.model_name));
+        console.log('🎯 Top 3 rankings:', winners.slice(0, 3).map((w, i) => `${i + 1}. ${w.model_name} (${w.wins}W, Elo: ${w.elo || 'N/A'}, inCycle: ${w.inCycle})`));
+        
+        // Calculate improved ranking reasons that show the algorithm's logic
         const reasons: Record<string, string> = {};
         winners.slice(0, 3).forEach((winner, idx) => {
           if (idx === 0) {
-            reasons[winner.id] = winner.inCycle 
-              ? "Highest Elo" 
-              : "Best record";
+            // First place: Show if it's a cycle or champion
+            if (winner.inCycle && winner.elo) {
+              reasons[winner.id] = `Champion (Elo ${winner.elo})`;
+            } else {
+              reasons[winner.id] = `Champion (${winner.wins}W)`;
+            }
           } else {
-            reasons[winner.id] = winner.inCycle
-              ? "Elo"
-              : `${winner.wins} wins`;
+            // 2nd and 3rd place: Show how they rank relative to those above
+            const aboveWinner = winners[idx - 1];
+            
+            // Check direct head-to-head relationship
+            if (winner.inCycle && aboveWinner.inCycle && winner.elo && aboveWinner.elo) {
+              // Both in cycle, ranked by Elo
+              reasons[winner.id] = `Elo ${winner.elo}`;
+            } else if (winner.inCycle && winner.elo) {
+              // In cycle but above wasn't
+              reasons[winner.id] = `${winner.wins}W (Elo ${winner.elo})`;
+            } else {
+              // Simple win-based ranking
+              const winDiff = aboveWinner.wins - winner.wins;
+              if (winDiff === 0 && winner.elo) {
+                reasons[winner.id] = `${winner.wins}W (Elo ${winner.elo})`;
+              } else {
+                reasons[winner.id] = `${winner.wins} wins`;
+              }
+            }
           }
         });
         setRankingReasons(reasons);
