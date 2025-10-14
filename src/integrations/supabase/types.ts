@@ -245,6 +245,8 @@ export type Database = {
           rating_second: number
           rating_third: number
           second_id: string
+          swapped_image_ids: string[] | null
+          swapped_images_count: number | null
           third_id: string
           transitivity_violations: number | null
           user_email: string
@@ -266,6 +268,8 @@ export type Database = {
           rating_second: number
           rating_third: number
           second_id: string
+          swapped_image_ids?: string[] | null
+          swapped_images_count?: number | null
           third_id: string
           transitivity_violations?: number | null
           user_email: string
@@ -287,6 +291,8 @@ export type Database = {
           rating_second?: number
           rating_third?: number
           second_id?: string
+          swapped_image_ids?: string[] | null
+          swapped_images_count?: number | null
           third_id?: string
           transitivity_violations?: number | null
           user_email?: string

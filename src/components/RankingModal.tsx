@@ -20,10 +20,10 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trophy } from "lucide-react";
+import { GripVertical, Trophy, Sparkles, BarChart3, ArrowDownUp, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Image {
   id: string;
@@ -53,7 +53,7 @@ interface SortableImageProps {
   rankingReason?: string;
 }
 
-const SortableImage = ({ image, rank, rating, onRatingChange, rankingReason }: SortableImageProps) => {
+const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReason }: SortableImageProps) => {
   const {
     attributes,
     listeners,
@@ -66,87 +66,78 @@ const SortableImage = ({ image, rank, rating, onRatingChange, rankingReason }: S
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
   };
 
-  const rankColors = ['text-yellow-500', 'text-gray-400', 'text-amber-600'];
-  const rankIcons = ['🥇', '🥈', '🥉'];
+  const rankColors = [
+    "from-yellow-400/20 to-yellow-600/20 border-yellow-500",
+    "from-gray-300/20 to-gray-400/20 border-gray-400",
+    "from-orange-400/20 to-orange-600/20 border-orange-500",
+  ];
+
+  const rankEmojis = ["🥇", "🥈", "🥉"];
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: rank * 0.1 }}
-        className="space-y-4 glass rounded-xl p-4"
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative rounded-lg border-2 bg-gradient-to-br ${rankColors[rank]} p-3 ${
+        isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"
+      }`}
+    >
+      {/* Drag handle - centered at top */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute -top-3 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing hover:bg-background/80 rounded-full p-1.5 bg-background border border-border shadow-sm transition-colors z-10"
       >
-        <div className="flex items-start gap-4">
-          <button
-            className="mt-2 cursor-grab active:cursor-grabbing touch-none p-2 hover:bg-accent rounded-lg transition-colors"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="w-5 h-5 text-muted-foreground" />
-          </button>
+        <GripVertical className="w-4 h-4 text-muted-foreground" />
+      </div>
 
-          <div className="flex-1 space-y-4">
-            <div className="relative">
-              <div className="glass rounded-xl overflow-hidden">
-                <img
-                  src={image.image_url}
-                  alt={image.model_name}
-                  className="w-full aspect-square object-cover"
-                />
-              </div>
-              <div className={`absolute top-2 left-2 bg-background/90 backdrop-blur-sm text-foreground rounded-full w-12 h-12 flex items-center justify-center font-bold text-2xl border-2 ${rank === 0 ? 'border-yellow-500' : rank === 1 ? 'border-gray-400' : 'border-amber-600'}`}>
-                {rankIcons[rank]}
-              </div>
-              <div className="absolute top-2 right-2 space-y-2">
-                <div className="bg-background/90 backdrop-blur-sm rounded-full px-3 py-1">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium">{image.wins} wins</span>
-                  </div>
-                </div>
-                
-                {rankingReason && (
-                  <div className="bg-blue-500/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs text-white max-w-[150px]">
-                    {rankingReason}
-                  </div>
-                )}
-              </div>
-              
-              {image.inCycle && (
-                <div className="absolute bottom-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium text-black">
-                  ⚔️ Circular preference
-                </div>
-              )}
-            </div>
+      {/* Rank badge */}
+      <div className="text-center mb-2">
+        <span className="text-3xl">{rankEmojis[rank]}</span>
+        <p className="text-xs font-medium text-muted-foreground mt-1">
+          {image.model_name}
+        </p>
+      </div>
 
-            <div className="space-y-2">
-              <p className="font-medium text-center">{image.model_name}</p>
-              
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground block text-center">
-                  Realism Rating: {rating.toFixed(1)}
-                </label>
-                <Slider
-                  min={1}
-                  max={10}
-                  step={0.1}
-                  value={[rating]}
-                  onValueChange={([value]) => onRatingChange(value)}
-                  className="py-4"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>1.0 - Not Realistic</span>
-                  <span>10.0 - Very Realistic</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Image */}
+      <div className="aspect-square rounded-md overflow-hidden mb-3 border border-border">
+        <img
+          src={image.image_url}
+          alt={image.model_name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Stats row */}
+      <div className="flex items-center justify-between text-xs mb-3 px-1">
+        <div className="flex items-center gap-1">
+          <Trophy className="w-3 h-3 text-primary" />
+          <span className="font-medium">{image.wins} wins</span>
         </div>
-      </motion.div>
+        {rankingReason && (
+          <span className="text-muted-foreground truncate max-w-[120px]" title={rankingReason}>
+            {rankingReason}
+          </span>
+        )}
+      </div>
+
+      {/* Compact rating slider */}
+      <div className="space-y-1.5">
+        <div className="flex justify-between items-center">
+          <label className="text-xs font-medium">Realism</label>
+          <span className="text-xs font-bold text-primary">{rating}/10</span>
+        </div>
+        <Slider
+          value={[rating]}
+          onValueChange={(value) => onRatingChange(value[0])}
+          min={1}
+          max={10}
+          step={1}
+          className="w-full"
+        />
+      </div>
     </div>
   );
 };
@@ -166,6 +157,9 @@ export const RankingModal = ({
     winners && winners.length >= 3 ? winners.slice(0, 3) : []
   );
   const [rankingReasons, setRankingReasons] = useState<Record<string, string>>({});
+  const [availableImages, setAvailableImages] = useState<ImageWithWins[]>([]);
+  const [showAllImages, setShowAllImages] = useState(false);
+  const [swappedImageIds, setSwappedImageIds] = useState<string[]>([]);
   const [ratings, setRatings] = useState<Record<string, number>>(() => {
     if (!winners || winners.length < 3) return {};
     return {
@@ -188,25 +182,26 @@ export const RankingModal = ({
     if (winners && winners.length >= 3 && !hasSubmitted) {
       console.log('✅ Syncing rankings state with winners:', winners);
       setRankings(winners.slice(0, 3));
+      setAvailableImages(winners.slice(3)); // Images outside top 3
       
       // Calculate ranking reasons
       const reasons: Record<string, string> = {};
       winners.slice(0, 3).forEach((winner, idx) => {
         if (idx === 0) {
           reasons[winner.id] = winner.inCycle 
-            ? "Highest Elo in cycle" 
-            : "Best overall record";
+            ? "Highest Elo" 
+            : "Best record";
         } else {
           reasons[winner.id] = winner.inCycle
-            ? "Elo tiebreaker"
-            : `${winner.wins} tournament wins`;
+            ? "Elo"
+            : `${winner.wins} wins`;
         }
       });
       setRankingReasons(reasons);
       
       setRatings({
-        [winners[0].id]: 5,
-        [winners[1].id]: 5,
+        [winners[0].id]: 7,
+        [winners[1].id]: 6,
         [winners[2].id]: 5,
       });
       // Load quality metrics
@@ -281,6 +276,34 @@ export const RankingModal = ({
         return reordered;
       });
     }
+  };
+
+  const handleSwapImage = (imageToSwap: ImageWithWins, position: number) => {
+    console.log('🔄 User swapping image:', {
+      swapIn: imageToSwap.model_name,
+      swapOut: rankings[position].model_name,
+      position: position + 1,
+    });
+
+    const oldImage = rankings[position];
+    const newRankings = [...rankings];
+    newRankings[position] = imageToSwap;
+    
+    setRankings(newRankings);
+    setAvailableImages(prev => [...prev.filter(img => img.id !== imageToSwap.id), oldImage]);
+    setSwappedImageIds(prev => [...prev, imageToSwap.id]);
+    
+    // Set default rating for swapped image
+    setRatings(prev => ({
+      ...prev,
+      [imageToSwap.id]: 5,
+    }));
+
+    // Update ranking reason
+    setRankingReasons(prev => ({
+      ...prev,
+      [imageToSwap.id]: `${imageToSwap.wins} wins`,
+    }));
   };
 
   const validateRankings = () => {
@@ -366,7 +389,6 @@ export const RankingModal = ({
         third_id: rankings[2].id,
         rating_first: ratings[rankings[0].id],
         rating_second: ratings[rankings[1].id],
-        user_modified_order: JSON.stringify(rankings.map(r => r.id)) !== JSON.stringify(winners.slice(0, 3).map(w => w.id)),
         rating_third: ratings[rankings[2].id],
         completion_time_seconds: completionTime,
         // Quality metrics
@@ -377,6 +399,13 @@ export const RankingModal = ({
         quality_flags: metrics?.qualityFlags || [],
         // Legacy confidence score (kept for backwards compatibility)
         confidence_score: metrics?.voteCertainty || 0,
+        
+        // Track if user changed the order
+        user_modified_order: JSON.stringify(rankings.map(r => r.id)) !== JSON.stringify(winners.slice(0, 3).map(w => w.id)),
+        
+        // Track swapped images
+        swapped_images_count: swappedImageIds.length,
+        swapped_image_ids: swappedImageIds,
       };
 
       console.log('💾 Saving ranking with metrics:', rankingData);
@@ -450,22 +479,20 @@ export const RankingModal = ({
   };
 
   return (
-    <Dialog open={open}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto glass">
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen && hasSubmitted) {
+        setHasSubmitted(false);
+        setSubmitting(false);
+      }
+    }}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">🎉 Ranking Complete - Models Revealed!</DialogTitle>
-          <DialogDescription className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              These are the top 3 based on your votes, ranked using this priority:
-            </p>
-            <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-1">
-              <li><strong>Direct matchups:</strong> If two images competed, the winner ranks higher</li>
-              <li><strong>Common opponents:</strong> If they didn't face each other, we compare their records against shared opponents</li>
-              <li><strong>Elo rating:</strong> As a last resort, overall performance score</li>
-            </ol>
-            <p className="text-xs text-muted-foreground mt-2">
-              <strong>You can drag to reorder</strong> if you disagree with the suggested ranking. Your final order will be saved.
-            </p>
+          <DialogTitle className="text-2xl flex items-center gap-2">
+            <Sparkles className="w-6 h-6 text-primary animate-pulse" />
+            🎉 Your Top 3 Rankings
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Drag to reorder, adjust realism ratings, or swap images from below. Your final ranking will be saved.
           </DialogDescription>
         </DialogHeader>
 
@@ -475,12 +502,12 @@ export const RankingModal = ({
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={rankings.map(r => r.id)}
-            strategy={verticalListSortingStrategy}
+            items={rankings.map((r) => r.id)}
+            strategy={horizontalListSortingStrategy}
           >
-            <div className="space-y-6 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {rankings.map((image, index) => (
-                <SortableImage
+                <SortableImageCompact
                   key={image.id}
                   image={image}
                   rank={index}
@@ -495,27 +522,82 @@ export const RankingModal = ({
           </SortableContext>
         </DndContext>
 
-        {/* Quality Metrics Display */}
-        {qualityMetrics && (
-          <div className="mt-6 p-4 glass rounded-xl space-y-3">
-            <h3 className="font-medium text-sm">Voting Quality Metrics</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Vote Certainty</p>
-                <p className={`font-medium ${
-                  qualityMetrics.voteCertainty >= 70 ? 'text-green-500' :
-                  qualityMetrics.voteCertainty >= 50 ? 'text-yellow-500' :
-                  'text-red-500'
-                }`}>
-                  {qualityMetrics.voteCertainty.toFixed(1)}%
-                </p>
+        {/* View Other Images Section */}
+        {availableImages.length > 0 && (
+          <div className="border-t pt-4 mt-6">
+            <button
+              onClick={() => setShowAllImages(!showAllImages)}
+              className="flex items-center justify-between w-full text-sm font-medium hover:text-primary transition-colors mb-3"
+            >
+              <span className="flex items-center gap-2">
+                <ArrowDownUp className="w-4 h-4" />
+                View Other Images ({availableImages.length})
+              </span>
+              {showAllImages ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            
+            {showAllImages && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {availableImages.map((img) => (
+                  <div key={img.id} className="group relative rounded-lg border overflow-hidden hover:border-primary transition-colors">
+                    <div className="aspect-square">
+                      <img
+                        src={img.image_url}
+                        alt={img.model_name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                      <p className="text-white text-xs font-medium text-center">{img.model_name}</p>
+                      <p className="text-white/80 text-xs">{img.wins} wins</p>
+                      <div className="flex gap-1">
+                        {[0, 1, 2].map((pos) => (
+                          <button
+                            key={pos}
+                            onClick={() => handleSwapImage(img, pos)}
+                            className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded hover:bg-primary/90 transition-colors"
+                          >
+                            → {pos === 0 ? '🥇' : pos === 1 ? '🥈' : '🥉'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-            {qualityMetrics.transitivityViolations > 0 && (
-              <p className="text-xs text-yellow-500">
-                ⚠️ {qualityMetrics.transitivityViolations} transitivity violation(s) detected
-              </p>
             )}
+          </div>
+        )}
+
+        {/* Visual Quality Metrics */}
+        {qualityMetrics && (
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3 mt-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                Vote Quality
+              </h3>
+              <span className="text-lg font-bold text-primary">
+                {(qualityMetrics.voteCertainty * 100).toFixed(0)}%
+              </span>
+            </div>
+            
+            {/* Visual progress bar */}
+            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-primary/50 to-primary transition-all duration-300"
+                style={{ width: `${qualityMetrics.voteCertainty * 100}%` }}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Consistency: {(qualityMetrics.consistencyScore * 100).toFixed(0)}%</span>
+              {qualityMetrics.transitivityViolations > 0 && (
+                <span className="text-amber-600 dark:text-amber-400">
+                  ⚠️ {qualityMetrics.transitivityViolations} conflicts
+                </span>
+              )}
+            </div>
           </div>
         )}
 
