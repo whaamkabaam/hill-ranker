@@ -6,11 +6,52 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield } from "lucide-react";
 import hvLogo from "@/assets/hv-capital-logo.png";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Profile = () => {
   const { user, signOut } = useAuth();
   const { role, jobTitle, fullName, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFullName, setEditFullName] = useState(fullName || "");
+  const [editJobTitle, setEditJobTitle] = useState(jobTitle || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!user?.id) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: editFullName.trim() || null,
+          job_title: editJobTitle.trim() || null,
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      toast.success("Profile updated successfully");
+      setIsEditing(false);
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error("Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditFullName(fullName || "");
+    setEditJobTitle(jobTitle || "");
+    setIsEditing(false);
+  };
 
   return (
     <div className="min-h-screen flex flex-col animate-fade-in">
@@ -53,18 +94,59 @@ const Profile = () => {
         <div className="space-y-6 animate-scale-in">
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle>Account Information</CardTitle>
-              <CardDescription>Your account details</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Account Information</CardTitle>
+                  <CardDescription>Your account details</CardDescription>
+                </div>
+                {!isEditing ? (
+                  <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
+                    Edit Profile
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button onClick={handleCancel} variant="outline" size="sm">Cancel</Button>
+                    <Button onClick={handleSave} size="sm" disabled={isSaving}>
+                      {isSaving ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-                <p className="text-base mt-1">{fullName || 'Not specified'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Position</label>
-                <p className="text-base mt-1">{jobTitle || 'Not specified'}</p>
-              </div>
+              {isEditing ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <Input
+                      id="fullName"
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="jobTitle">Position</Label>
+                    <Input
+                      id="jobTitle"
+                      value={editJobTitle}
+                      onChange={(e) => setEditJobTitle(e.target.value)}
+                      placeholder="Enter your job title"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+                    <p className="text-base mt-1">{fullName || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Position</label>
+                    <p className="text-base mt-1">{jobTitle || 'Not specified'}</p>
+                  </div>
+                </>
+              )}
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Email</label>
                 <p className="text-base mt-1">{user?.email}</p>

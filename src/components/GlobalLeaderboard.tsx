@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Loader2, Trophy, Star, TrendingUp, Users } from 'lucide-react';
+import { Loader2, Trophy, Star, TrendingUp, Users, Info, ArrowDown } from 'lucide-react';
 import { parseModelNameFromFile } from '@/lib/modelNameParser';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -14,7 +14,7 @@ interface ModelStats {
   secondPlaceCount: number;
   thirdPlaceCount: number;
   avgRating: number;
-  avgPosition: number;
+  winRate: number;
   totalAppearances: number;
   totalRatingsSum: number;
   totalRatingsCount: number;
@@ -101,7 +101,7 @@ export function GlobalLeaderboard() {
             secondPlaceCount: 0,
             thirdPlaceCount: 0,
             avgRating: 0,
-            avgPosition: 0,
+            winRate: 0,
             totalAppearances: 0,
             totalRatingsSum: 0,
             totalRatingsCount: 0,
@@ -123,7 +123,7 @@ export function GlobalLeaderboard() {
             secondPlaceCount: 0,
             thirdPlaceCount: 0,
             avgRating: 0,
-            avgPosition: 0,
+            winRate: 0,
             totalAppearances: 0,
             totalRatingsSum: 0,
             totalRatingsCount: 0,
@@ -145,7 +145,7 @@ export function GlobalLeaderboard() {
             secondPlaceCount: 0,
             thirdPlaceCount: 0,
             avgRating: 0,
-            avgPosition: 0,
+            winRate: 0,
             totalAppearances: 0,
             totalRatingsSum: 0,
             totalRatingsCount: 0,
@@ -160,13 +160,12 @@ export function GlobalLeaderboard() {
         }
       });
 
-      // Calculate average position and rating
+      // Calculate win rate and average rating
       const modelStatsArray = Array.from(modelStatsMap.values()).map(stats => {
-        const totalPositionSum = 
-          stats.firstPlaceCount * 1 + 
-          stats.secondPlaceCount * 2 + 
-          stats.thirdPlaceCount * 3;
-        stats.avgPosition = totalPositionSum / stats.totalAppearances;
+        // Calculate win rate (percentage of times model came in 1st place)
+        stats.winRate = stats.totalAppearances > 0
+          ? (stats.firstPlaceCount / stats.totalAppearances) * 100
+          : 0;
         
         // Calculate average realism rating (out of 10)
         stats.avgRating = stats.totalRatingsCount > 0
@@ -288,7 +287,7 @@ export function GlobalLeaderboard() {
             Global AI Model Leaderboard
           </CardTitle>
           <CardDescription>
-            Aggregated rankings from all users across all prompts
+            Aggregated rankings from all users across all prompts (sorted by first place wins)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,18 +297,26 @@ export function GlobalLeaderboard() {
                 <TableRow>
                   <TableHead className="w-12">Rank</TableHead>
                   <TableHead>Model</TableHead>
-                  <TableHead className="text-center">🥇 1st</TableHead>
+                  <TableHead className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      🥇 1st <ArrowDown className="h-3 w-3 opacity-50" />
+                    </div>
+                  </TableHead>
                   <TableHead className="text-center">🥈 2nd</TableHead>
                   <TableHead className="text-center">🥉 3rd</TableHead>
                   <TableHead className="text-center">
                     <Tooltip>
-                      <TooltipTrigger className="cursor-help">Score</TooltipTrigger>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center gap-1 cursor-help">
+                          Score <Info className="h-3 w-3 opacity-50" />
+                        </div>
+                      </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p>Average realism rating (out of 10) given by users who ranked this model. Higher scores indicate more realistic image generation.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TableHead>
-                  <TableHead className="text-center">Avg Position</TableHead>
+                  <TableHead className="text-center">Win Rate</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -330,7 +337,7 @@ export function GlobalLeaderboard() {
                       <Badge variant="outline">{model.thirdPlaceCount}</Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      {model.totalRatingsCount > 0 ? (
+                      {model.firstPlaceCount > 0 ? (
                         <div className="flex items-center justify-center gap-1">
                           <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
                           <span className="font-medium">{model.avgRating.toFixed(1)}/10</span>
@@ -339,8 +346,8 @@ export function GlobalLeaderboard() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-center text-muted-foreground">
-                      {model.avgPosition.toFixed(2)}
+                    <TableCell className="text-center">
+                      <span className="font-medium">{model.winRate.toFixed(1)}%</span>
                     </TableCell>
                   </TableRow>
                 ))}

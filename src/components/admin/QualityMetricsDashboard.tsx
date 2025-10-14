@@ -11,6 +11,7 @@ export default function QualityMetricsDashboard() {
   const [metrics, setMetrics] = useState<QualityMetric[]>([]);
   const [userQuality, setUserQuality] = useState<UserQualityData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     fetchQualityData();
@@ -23,6 +24,20 @@ export default function QualityMetricsDashboard() {
         .select('*');
 
       if (error) throw error;
+
+      // Fetch user profiles to get full names
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email');
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user_id -> full_name (fallback to email)
+      const nameMap = new Map<string, string>();
+      profiles?.forEach(profile => {
+        nameMap.set(profile.id, profile.full_name || profile.email);
+      });
+      setUserNames(nameMap);
 
       const aggregatedMetrics = aggregateQualityMetrics(rankings || []);
       setMetrics(aggregatedMetrics);
@@ -150,7 +165,9 @@ export default function QualityMetricsDashboard() {
             <TableBody>
               {userQuality.map((user) => (
                 <TableRow key={user.userId}>
-                  <TableCell className="font-medium">{user.userEmail}</TableCell>
+                  <TableCell className="font-medium">
+                    {userNames.get(user.userId) || user.userEmail}
+                  </TableCell>
                   <TableCell className="text-right">
                     <Badge variant={user.consistencyScore >= 70 ? 'default' : user.consistencyScore >= 50 ? 'secondary' : 'destructive'}>
                       {user.consistencyScore}%
