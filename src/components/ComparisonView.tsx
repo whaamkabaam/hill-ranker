@@ -28,7 +28,7 @@ interface ComparisonViewProps {
   onSkip?: () => void;
 }
 
-type AnimationState = 'idle' | 'left-wins' | 'right-wins-promote';
+type AnimationState = 'idle' | 'left-wins' | 'right-wins';
 
 // Utility: Calculate Elo ratings from votes
 const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => {
@@ -346,7 +346,11 @@ export const ComparisonView = ({
   const [remainingImages, setRemainingImages] = useState<Image[]>([]);
   const [totalComparisons, setTotalComparisons] = useState(0);
   const [animationState, setAnimationState] = useState<AnimationState>('idle');
-  
+
+  // Display state: separates visual rendering from data state
+  const [displayChampion, setDisplayChampion] = useState<Image | null>(null);
+  const [displayChallenger, setDisplayChallenger] = useState<Image | null>(null);
+
   // Session state
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -356,37 +360,19 @@ export const ComparisonView = ({
   const [pendingVote, setPendingVote] = useState<boolean>(false);
   const [voteCache, setVoteCache] = useState<Set<string>>(new Set());
   
-  // PHASE 2: Add debounce mechanism
+  // Debounce and animation flags
   const [isTournamentCompleting, setIsTournamentCompleting] = useState(false);
-  
-  // Guard flag to prevent infinite loop
   const [isCompletingTournament, setIsCompletingTournament] = useState(false);
-  const [skipNextChampionAnimation, setSkipNextChampionAnimation] = useState(false);
-  
-  // Key fix: Track when challenger container needs to reset position
-  const [isResettingChallenger, setIsResettingChallenger] = useState(false);
   
   const estimatedTotal = Math.ceil(images.length * 2.5);
 
+  // Sync display images with actual data when idle
   useEffect(() => {
-    if (skipNextChampionAnimation) {
-      // Reset the flag after the render cycle
-      setTimeout(() => setSkipNextChampionAnimation(false), 0);
+    if (animationState === 'idle') {
+      setDisplayChampion(champion);
+      setDisplayChallenger(challenger);
     }
-  }, [skipNextChampionAnimation]);
-
-  // Handle the challenger reset and entrance animation
-  useEffect(() => {
-    if (isResettingChallenger) {
-      // After snapping off-screen, animate the new challenger in from the right
-      const timer = setTimeout(() => {
-        setIsResettingChallenger(false);
-        setAnimationState('idle');
-        setPendingVote(false);
-      }, 50); // Brief delay allows CSS transition to kick in
-      return () => clearTimeout(timer);
-    }
-  }, [isResettingChallenger]);
+  }, [champion, challenger, animationState]);
 
   // Initialize King-of-the-Hill tournament
   useEffect(() => {
@@ -753,10 +739,10 @@ export const ComparisonView = ({
       }
 
       const isChampionWinner = winner.id === champion.id;
-      const animationTime = 400; // Unified animation time
+      const animationTime = 300; // Snappier animation
 
       // Trigger animation
-      setAnimationState(isChampionWinner ? 'left-wins' : 'right-wins-promote');
+      setAnimationState(isChampionWinner ? 'left-wins' : 'right-wins');
 
       // Record vote (champion is always on left, challenger on right)
       const { error } = await supabase.from("votes").insert({
@@ -789,41 +775,32 @@ export const ComparisonView = ({
           .eq('id', sessionId);
       }
 
-      // Wait for exit animation
+      // Wait for animation to complete
       await new Promise(resolve => setTimeout(resolve, animationTime));
 
+      // Update state after animation
       if (isChampionWinner) {
-        // Left wins: Champion defended throne, get new challenger
-        console.log('🎬 Left wins: Champion defends, getting new challenger');
-        setTimeout(() => {
-          if (remainingImages.length > 0) {
-            setChallenger(remainingImages[0]);
-            setRemainingImages(prev => prev.slice(1));
-          } else {
-            setChallenger(null);
-          }
-          setAnimationState('idle');
-          setPendingVote(false);
-        }, animationTime);
+        // Left wins: Get new challenger
+        if (remainingImages.length > 0) {
+          setChallenger(remainingImages[0]);
+          setRemainingImages(prev => prev.slice(1));
+        } else {
+          setChallenger(null);
+        }
       } else {
-        // Right wins: Multi-step animation sequence
-        console.log('🎬 Right wins: Starting promotion sequence');
-        
-        setTimeout(() => {
-          // Instantly snap challenger container off-screen to the right
-          setIsResettingChallenger(true);
-          setSkipNextChampionAnimation(true);
-
-          // Update the images
-          setChampion(challenger);
-          if (remainingImages.length > 0) {
-            setChallenger(remainingImages[0]);
-            setRemainingImages(prev => prev.slice(1));
-          } else {
-            setChallenger(null);
-          }
-        }, animationTime);
+        // Right wins: Challenger becomes champion
+        setChampion(challenger);
+        if (remainingImages.length > 0) {
+          setChallenger(remainingImages[0]);
+          setRemainingImages(prev => prev.slice(1));
+        } else {
+          setChallenger(null);
+        }
       }
+
+      // Reset animation state
+      setAnimationState('idle');
+      setPendingVote(false);
       
     } catch (error: any) {
       console.error("Error saving vote:", error);
@@ -985,6 +962,29 @@ export const ComparisonView = ({
     }
   };
 
+  // Helper function to determine card CSS classes based on animation state
+  const getCardClasses = (side: 'left' | 'right') => {
+    const baseClasses = 'absolute w-1/2 transition-all duration-300 ease-in-out';
+    
+    // Default positions
+    let transform = side === 'left' ? 'translate-x-0' : 'translate-x-full';
+    let opacity = 'opacity-100';
+
+    if (animationState === 'left-wins' && side === 'right') {
+      transform = 'translate-x-[200%]'; // Exit to the right
+      opacity = 'opacity-0';
+    } else if (animationState === 'right-wins') {
+      if (side === 'left') {
+        transform = '-translate-x-full'; // Exit to the left
+        opacity = 'opacity-0';
+      } else {
+        transform = 'translate-x-0'; // Move to the left position
+      }
+    }
+
+    return `${baseClasses} ${transform} ${opacity}`;
+  };
+
   if (isLoading || !champion || !challenger) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1047,56 +1047,45 @@ export const ComparisonView = ({
         </div>
 
         {/* Comparison */}
-        <div className="flex gap-8 items-start relative overflow-hidden">
-          {/* Champion (Left Side) */}
-          <div 
-            className={`flex-1 transition-all duration-400 ease-in-out ${
-              animationState === 'right-wins-promote' ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'
-            }`}
-          >
+        <div className="relative w-full" style={{ height: '600px' }}>
+          {/* Champion (Left Side) Container */}
+          <div className={getCardClasses('left')}>
             {!imagesLoaded.left && (
               <div className="absolute inset-0 z-10 pointer-events-none">
                 <ImageCardSkeleton />
               </div>
             )}
-            <ImageCard
-              imageUrl={champion.image_url}
-              modelName={champion.model_name}
-              side="left"
-              isKing={true}
-              onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
-              blindMode={true}
-              skipAnimation={skipNextChampionAnimation}
-            />
+            {displayChampion && (
+              <ImageCard
+                key={displayChampion.id}
+                imageUrl={displayChampion.image_url}
+                modelName={displayChampion.model_name}
+                side="left"
+                isKing={true}
+                onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
+                blindMode={true}
+              />
+            )}
           </div>
 
-          {/* Challenger (Right Side) */}
-          <div 
-            className={`flex-1 ${
-              isResettingChallenger
-                ? 'transition-none opacity-0 translate-x-full' // Instantly snap off-screen
-                : `transition-all duration-400 ease-in-out ${
-                    animationState === 'left-wins'
-                      ? 'opacity-0 translate-x-full' // Animate out to the right
-                      : animationState === 'right-wins-promote'
-                      ? 'opacity-100 -translate-x-full' // Animate to the left position
-                      : 'opacity-100 translate-x-0' // Animate into place from the right
-                  }`
-            }`}
-          >
+          {/* Challenger (Right Side) Container */}
+          <div className={getCardClasses('right')}>
             {!imagesLoaded.right && (
               <div className="absolute inset-0 z-10 pointer-events-none">
                 <ImageCardSkeleton />
               </div>
             )}
-            <ImageCard
-              imageUrl={challenger.image_url}
-              modelName={challenger.model_name}
-              side="right"
-              isKing={false}
-              onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
-              blindMode={true}
-            />
+            {displayChallenger && (
+              <ImageCard
+                key={displayChallenger.id}
+                imageUrl={displayChallenger.image_url}
+                modelName={displayChallenger.model_name}
+                side="right"
+                isKing={false}
+                onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
+                blindMode={true}
+              />
+            )}
           </div>
         </div>
 
@@ -1117,7 +1106,7 @@ export const ComparisonView = ({
               }
             >
               <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">←</kbd>
-              <span className="font-semibold">Champion Wins</span>
+              <span className="font-semibold">Image A Wins</span>
             </Button>
             <Button
               onClick={() => handleSelection(challenger)}
@@ -1132,7 +1121,7 @@ export const ComparisonView = ({
                 hasVotedOnPair(champion?.id || '', challenger?.id || '')
               }
             >
-              <span className="font-semibold">Challenger Wins</span>
+              <span className="font-semibold">Image B Wins</span>
               <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">→</kbd>
             </Button>
           </div>
