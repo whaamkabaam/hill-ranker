@@ -756,9 +756,9 @@ export const ComparisonView = ({
       }
 
       const isChampionWinner = winner.id === champion.id;
-      const animationTime = 300; // Faster animation time
+      const animationTime = 300; // Faster, smoother animation duration
 
-      // Record vote
+      // --- Database operations can happen here ---
       const { error } = await supabase.from("votes").insert({
         prompt_id: promptId,
         user_email: userEmail,
@@ -773,25 +773,18 @@ export const ComparisonView = ({
 
       const newComparisonCount = totalComparisons + 1;
       setTotalComparisons(newComparisonCount);
-      
-      console.log('📊 Vote recorded, updating counts:', {
-        oldCount: totalComparisons,
-        newCount: newComparisonCount,
-        total: estimatedTotal,
-        remaining: estimatedTotal - newComparisonCount
-      });
 
-      // Update session progress
       if (sessionId) {
         await supabase
           .from('comparison_sessions')
           .update({ completed_comparisons: newComparisonCount })
           .eq('id', sessionId);
       }
+      // --- End of database operations ---
 
       if (isChampionWinner) {
-        // Left wins: Champion defends, new challenger slides in
-        setAnimationState('left-wins');
+        // Left wins: Champion stays, new challenger slides in.
+        setAnimationState('left-wins'); // Animate right card out
         setTimeout(() => {
           if (remainingImages.length > 0) {
             setChallenger(remainingImages[0]);
@@ -799,18 +792,21 @@ export const ComparisonView = ({
           } else {
             setChallenger(null);
           }
-          setAnimationState('idle');
+          setAnimationState('idle'); // New challenger will animate in from the right by default
           setPendingVote(false);
         }, animationTime);
       } else {
-        // Right wins: Multi-step animation
-        setIsChampionAnimatingOut(true); // 1. Champion slides out
-        setAnimationState('right-wins-promote'); // 2. Challenger slides to champion's position
+        // Right wins: Multi-step animation.
+        setIsChampionAnimatingOut(true);      // 1. Champion (left) slides out.
+        setAnimationState('right-wins-promote'); // 2. Challenger (right) slides to the left.
 
         setTimeout(() => {
-          setIsResettingChallenger(true); // 3. Prepare for new challenger
-          setSkipNextChampionAnimation(true);
-          setChampion(challenger);
+          // This happens after the first part of the animation.
+          setSkipNextChampionAnimation(true); // Don't animate the new champion.
+          setChampion(challenger);             // The winner is the new champion.
+
+          // Prepare for the new challenger.
+          setIsResettingChallenger(true);      // 3. Instantly move challenger container off-screen.
           if (remainingImages.length > 0) {
             setChallenger(remainingImages[0]);
             setRemainingImages(prev => prev.slice(1));
@@ -823,21 +819,17 @@ export const ComparisonView = ({
 
     } catch (error: any) {
       console.error("Error saving vote:", error);
-      
-      if (error?.code === '23505' || error?.message?.includes('duplicate key')) {
-        console.log('⚠️ Vote already exists for this pair, continuing...');
-        toast.info("You've already voted on this comparison");
-      } else {
-        toast.error(`Failed to save vote: ${error?.message || 'Unknown error'}`);
-        setAnimationState('idle');
-        setPendingVote(false);
-        setVoteCache(prev => {
-          const newCache = new Set(prev);
-          newCache.delete(pairKey);
-          return newCache;
-        });
-        return;
-      }
+      toast.error(`Failed to save vote: ${error?.message || 'Unknown error'}`);
+      // Reset all animation states on error
+      setAnimationState('idle');
+      setIsChampionAnimatingOut(false);
+      setIsResettingChallenger(false);
+      setPendingVote(false);
+      setVoteCache(prev => {
+        const newCache = new Set(prev);
+        newCache.delete(pairKey);
+        return newCache;
+      });
     }
   };
 
