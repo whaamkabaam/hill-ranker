@@ -24,6 +24,7 @@ interface VoteHistoryEntry {
   challengerBefore: Image;
   winner: Image;
   remainingBefore: Image[];
+  championIdBefore: string | null;
   timestamp: number;
 }
 
@@ -837,6 +838,7 @@ export const ComparisonView = ({
             voteId: voteData.id,
             championBefore: champion,
             challengerBefore: challenger,
+            championIdBefore: championId,
             winner: winner,
             remainingBefore: [...remainingImages],
             timestamp: Date.now(),
@@ -941,6 +943,7 @@ export const ComparisonView = ({
       setChampion(lastVote.championBefore);
       setChallenger(lastVote.challengerBefore);
       setRemainingImages(lastVote.remainingBefore);
+      setChampionId(lastVote.championIdBefore);
       setTotalComparisons(prev => prev - 1);
 
       // 3. Remove from vote cache and presented pairs
