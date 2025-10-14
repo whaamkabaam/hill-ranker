@@ -699,40 +699,15 @@ export const ComparisonView = ({
       // Wait for exit animation
       await new Promise(resolve => setTimeout(resolve, 600));
 
-      if (isChampionWinner) {
-        // Champion wins: right exits, get new challenger
-        console.log('🎬 Left wins: Exit animation (600ms)');
-        if (remainingImages.length > 0) {
-          setChallenger(remainingImages[0]);
-          setRemainingImages(prev => prev.slice(1));
-        } else {
-          setChallenger(null);
-        }
+      // Both cases: right side exits, get new challenger
+      // Left image (champion) always stays in place
+      console.log(`🎬 ${isChampionWinner ? 'Left' : 'Right'} wins: Exit animation (600ms)`);
+      
+      if (remainingImages.length > 0) {
+        setChallenger(remainingImages[0]);
+        setRemainingImages(prev => prev.slice(1));
       } else {
-        // Challenger wins: promote challenger to champion
-        console.log('🎬 Right wins: Exit animation (600ms)');
-        const oldChampionId = champion.id;
-        setChampion(challenger);
-        
-        // Clear old champion's vote cache entries
-        setVoteCache(prev => {
-          const newCache = new Set(prev);
-          prev.forEach(key => {
-            const [leftId] = key.split('|');
-            if (leftId === oldChampionId) {
-              newCache.delete(key);
-            }
-          });
-          return newCache;
-        });
-        
-        // Get new challenger
-        if (remainingImages.length > 0) {
-          setChallenger(remainingImages[0]);
-          setRemainingImages(prev => prev.slice(1));
-        } else {
-          setChallenger(null);
-        }
+        setChallenger(null);
       }
       
       // Reset to idle
@@ -962,12 +937,9 @@ export const ComparisonView = ({
 
         {/* Comparison */}
         <div className="flex gap-8 items-start relative overflow-hidden">
-          {/* Champion (Left Side) */}
+          {/* Champion (Left Side) - Always static */}
           <div 
-            className={`flex-1 transition-all duration-500 ease-out ${
-              animationState === 'right-wins' ? '-translate-x-[120%] opacity-0' : 
-              'translate-x-0 opacity-100'
-            }`}
+            className="flex-1 transition-all duration-500 ease-out translate-x-0 opacity-100"
           >
             {!imagesLoaded.left && (
               <div className="absolute inset-0 z-10 pointer-events-none">
@@ -984,10 +956,10 @@ export const ComparisonView = ({
             />
           </div>
 
-          {/* Challenger (Right Side) */}
+          {/* Challenger (Right Side) - Animates out on both wins */}
           <div 
             className={`flex-1 transition-all duration-500 ease-out ${
-              animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
+              animationState === 'left-wins' || animationState === 'right-wins' ? 'translate-x-[120%] opacity-0' :
               'translate-x-0 opacity-100'
             }`}
           >
