@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Trash2, Plus, CheckCircle, XCircle, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { BatchImageUpload } from '@/components/admin/BatchImageUpload';
 
 interface Prompt {
   id: string;
@@ -359,54 +360,105 @@ export default function ContentManagement() {
           </TabsContent>
 
           <TabsContent value="images" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Add New Image</CardTitle>
-                <CardDescription>Upload an image for a prompt (ensure 4 images per prompt)</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4">
-                  <div>
-                    <Label htmlFor="image-prompt">Select Prompt</Label>
-                    <select
-                      id="image-prompt"
-                      className="w-full p-2 border rounded-md"
-                      value={selectedPromptId}
-                      onChange={(e) => setSelectedPromptId(e.target.value)}
-                    >
-                      <option value="">Select a prompt...</option>
-                      {prompts.map((prompt) => (
-                        <option key={prompt.id} value={prompt.id}>
-                          {prompt.text} ({getImageCountForPrompt(prompt.id)}/4)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="image-model">Model Name</Label>
-                    <Input
-                      id="image-model"
-                      value={newImageModel}
-                      onChange={(e) => setNewImageModel(e.target.value)}
-                      placeholder="e.g., DALL-E 3, Midjourney v6"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="image-url">Image URL</Label>
-                    <Input
-                      id="image-url"
-                      value={newImageUrl}
-                      onChange={(e) => setNewImageUrl(e.target.value)}
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <Button onClick={handleAddImage} className="gap-2">
-                    <Upload className="w-4 h-4" />
-                    Add Image
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <Tabs defaultValue="batch-upload">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="batch-upload">Batch Upload</TabsTrigger>
+                <TabsTrigger value="single-url">Single URL</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="batch-upload" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Batch Upload Images</CardTitle>
+                    <CardDescription>
+                      Upload up to 15 images at once with automatic model name detection
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="batch-prompt">Select Prompt</Label>
+                      <select
+                        id="batch-prompt"
+                        className="w-full p-2 border rounded-md bg-background"
+                        value={selectedPromptId}
+                        onChange={(e) => setSelectedPromptId(e.target.value)}
+                      >
+                        <option value="">Select a prompt...</option>
+                        {prompts.map((prompt) => (
+                          <option key={prompt.id} value={prompt.id}>
+                            {prompt.text} ({getImageCountForPrompt(prompt.id)}/4)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {selectedPromptId && (
+                      <BatchImageUpload 
+                        promptId={selectedPromptId} 
+                        onUploadComplete={loadContent}
+                      />
+                    )}
+                    
+                    {!selectedPromptId && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Please select a prompt to start uploading images
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="single-url" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Add Image via URL</CardTitle>
+                    <CardDescription>Add a single image using an external URL</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4">
+                      <div>
+                        <Label htmlFor="image-prompt">Select Prompt</Label>
+                        <select
+                          id="image-prompt"
+                          className="w-full p-2 border rounded-md bg-background"
+                          value={selectedPromptId}
+                          onChange={(e) => setSelectedPromptId(e.target.value)}
+                        >
+                          <option value="">Select a prompt...</option>
+                          {prompts.map((prompt) => (
+                            <option key={prompt.id} value={prompt.id}>
+                              {prompt.text} ({getImageCountForPrompt(prompt.id)}/4)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="image-model">Model Name</Label>
+                        <Input
+                          id="image-model"
+                          value={newImageModel}
+                          onChange={(e) => setNewImageModel(e.target.value)}
+                          placeholder="e.g., ChatGPT 4o, Midjourney v7"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="image-url">Image URL</Label>
+                        <Input
+                          id="image-url"
+                          value={newImageUrl}
+                          onChange={(e) => setNewImageUrl(e.target.value)}
+                          placeholder="https://..."
+                        />
+                      </div>
+                      <Button onClick={handleAddImage} className="gap-2">
+                        <Upload className="w-4 h-4" />
+                        Add Image
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {images.map((image) => {
