@@ -28,7 +28,7 @@ interface ComparisonViewProps {
   onSkip?: () => void;
 }
 
-type AnimationState = 'idle' | 'replacing-right' | 'replacing-both';
+type AnimationState = 'idle' | 'replacing-left' | 'replacing-right';
 
 // Utility: Calculate Elo ratings from votes
 const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => {
@@ -771,20 +771,23 @@ export const ComparisonView = ({
           setPendingVote(false);
         }, animationTime);
       } else {
-        // Challenger wins: Replace BOTH sides (no position swapping!)
-        setAnimationState('replacing-both');
+        // Challenger wins: Winner STAYS on right, replace LEFT side
+        setAnimationState('replacing-left');
         
         setTimeout(() => {
-          // The winner becomes the new champion (left side gets new data)
-          setChampion(challenger);
+          // The challenger becomes the new champion (but we swap display positions)
+          const newChampion = challenger;
           
-          // Right side gets a new challenger
+          // Left side gets a new challenger
           if (remainingImages.length > 0) {
-            setChallenger(remainingImages[0]);
+            setChampion(remainingImages[0]);
             setRemainingImages(prev => prev.slice(1));
           } else {
-            setChallenger(null);
+            setChampion(null);
           }
+          
+          // Right side keeps the winner as challenger (but it's really the champion now)
+          setChallenger(newChampion);
           
           setAnimationState('idle');
           setPendingVote(false);
@@ -1012,7 +1015,7 @@ export const ComparisonView = ({
           <div 
             className="flex-1 relative transition-all duration-300 ease-in-out"
             style={{
-              opacity: animationState === 'replacing-both' ? 0 : 1,
+              opacity: animationState === 'replacing-left' ? 0 : 1,
             }}
           >
             {champion && !imagesLoaded.left && (
@@ -1037,8 +1040,7 @@ export const ComparisonView = ({
           <div 
             className="flex-1 relative transition-all duration-300 ease-in-out"
             style={{
-              opacity: 
-                animationState === 'replacing-right' || animationState === 'replacing-both' ? 0 : 1,
+              opacity: animationState === 'replacing-right' ? 0 : 1,
             }}
           >
             {challenger && !imagesLoaded.right && (
