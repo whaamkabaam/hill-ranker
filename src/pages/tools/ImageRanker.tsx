@@ -348,18 +348,30 @@ const ImageRanker = () => {
                       onClick={async () => {
                         if (!user?.id) return;
                         try {
-                          await supabase
-                            .from('prompt_completions')
-                            .delete()
-                            .eq('user_id', user.id);
+                          toast.loading("Resetting all progress...");
                           
+                          // Delete all user data in parallel for speed
+                          const deleteOperations = [
+                            supabase.from('prompt_completions').delete().eq('user_id', user.id),
+                            supabase.from('rankings').delete().eq('user_id', user.id),
+                            supabase.from('votes').delete().eq('user_id', user.id),
+                            supabase.from('comparison_sessions').delete().eq('user_id', user.id),
+                          ];
+                          
+                          await Promise.all(deleteOperations);
+                          
+                          // Reset UI state
                           setAllPromptsCompleted(false);
                           setCurrentPromptIndex(0);
                           setActiveTab('ranking');
-                          toast.success("Progress reset! Starting fresh.");
+                          setHasUserVoted(false);
+                          
+                          toast.dismiss();
+                          toast.success("✨ Progress reset! Starting fresh.");
                         } catch (error) {
                           console.error("Error resetting progress:", error);
-                          toast.error("Failed to reset progress");
+                          toast.dismiss();
+                          toast.error("Failed to reset progress. Please try again.");
                         }
                       }}
                     >
