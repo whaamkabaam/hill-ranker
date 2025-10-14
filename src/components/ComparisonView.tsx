@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowRight, RotateCcw } from "lucide-react";
+import { ArrowRight, RotateCcw, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Image {
   id: string;
@@ -465,6 +466,66 @@ export const ComparisonView = ({
     }
   };
 
+  const handleResetVotes = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in");
+        return;
+      }
+
+      // Delete all votes for this user and prompt
+      const { error: votesError } = await supabase
+        .from('votes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('prompt_id', promptId);
+
+      if (votesError) throw votesError;
+
+      // Delete ranking if exists
+      const { error: rankingError } = await supabase
+        .from('rankings')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('prompt_id', promptId);
+
+      if (rankingError && rankingError.code !== 'PGRST116') throw rankingError;
+
+      // Delete/reset comparison session
+      const { error: sessionError } = await supabase
+        .from('comparison_sessions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('prompt_id', promptId);
+
+      if (sessionError && sessionError.code !== 'PGRST116') throw sessionError;
+
+      // Remove from prompt completions
+      const { error: completionError } = await supabase
+        .from('prompt_completions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('prompt_id', promptId);
+
+      if (completionError && completionError.code !== 'PGRST116') throw completionError;
+
+      // Reset component state
+      setVoteHistory([]);
+      setCompletedPairs(new Set());
+      setCurrentPairIndex(0);
+      setSessionId(null);
+
+      // Reinitialize
+      window.location.reload();
+
+      toast.success("Votes reset. Starting fresh!");
+    } catch (error) {
+      console.error("Error resetting votes:", error);
+      toast.error("Failed to reset votes");
+    }
+  };
+
   if (isLoading || !currentPair) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -493,6 +554,34 @@ export const ComparisonView = ({
               Every image compared against every other image
             </p>
           </div>
+
+          {/* Reset Button */}
+          {completedPairs.size > 0 && (
+            <div className="flex justify-center pt-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Reset My Votes
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset All Votes?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will delete all your votes for this prompt and restart the comparison from the beginning. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleResetVotes} className="bg-destructive hover:bg-destructive/90">
+                      Reset All Votes
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
         </div>
 
         {/* Comparison */}

@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { ArrowLeft, UserPlus, Shield, Users, TrendingUp } from 'lucide-react';
+import { ArrowLeft, UserPlus, Shield, Users, TrendingUp, Trash2, MoreVertical } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface UserWithRole {
   id: string;
@@ -132,6 +134,48 @@ export default function AdminPanel() {
     }
   };
 
+  const handleResetAllVotes = async () => {
+    try {
+      // Delete all records
+      const { error: votesError } = await supabase.from('votes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const { error: rankingsError } = await supabase.from('rankings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const { error: sessionsError } = await supabase.from('comparison_sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const { error: completionsError } = await supabase.from('prompt_completions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (votesError) throw votesError;
+      if (rankingsError) throw rankingsError;
+      if (sessionsError) throw sessionsError;
+      if (completionsError) throw completionsError;
+
+      toast.success('All voting data has been reset');
+      fetchStats();
+    } catch (error) {
+      console.error('Error resetting all votes:', error);
+      toast.error('Failed to reset all votes');
+    }
+  };
+
+  const handleResetUserVotes = async (userId: string, userEmail: string) => {
+    try {
+      // Delete all records for this user
+      const { error: votesError } = await supabase.from('votes').delete().eq('user_id', userId);
+      const { error: rankingsError } = await supabase.from('rankings').delete().eq('user_id', userId);
+      const { error: sessionsError } = await supabase.from('comparison_sessions').delete().eq('user_id', userId);
+      const { error: completionsError } = await supabase.from('prompt_completions').delete().eq('user_id', userId);
+
+      if (votesError) throw votesError;
+      if (rankingsError) throw rankingsError;
+      if (sessionsError) throw sessionsError;
+      if (completionsError) throw completionsError;
+
+      toast.success(`All votes reset for ${userEmail}`);
+      fetchStats();
+    } catch (error) {
+      console.error('Error resetting user votes:', error);
+      toast.error('Failed to reset user votes');
+    }
+  };
+
   if (roleLoading || loadingUsers) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -200,6 +244,50 @@ export default function AdminPanel() {
           </Card>
         </div>
 
+        {/* Data Management */}
+        <Card className="glass-card mb-8 border-destructive/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Data Management
+            </CardTitle>
+            <CardDescription>
+              Danger zone: Reset all voting data for the entire platform
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  Reset All Votes
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-destructive">⚠️ Reset All Platform Data?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete:
+                    <ul className="list-disc ml-6 mt-2 space-y-1">
+                      <li>All votes from all users</li>
+                      <li>All rankings from all users</li>
+                      <li>All comparison sessions</li>
+                      <li>All prompt completions</li>
+                    </ul>
+                    <p className="mt-4 font-semibold text-destructive">This action cannot be undone!</p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleResetAllVotes} className="bg-destructive hover:bg-destructive/90">
+                    Yes, Reset Everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+
         {/* Add Allowed User */}
         <Card className="glass-card mb-8">
           <CardHeader>
@@ -248,6 +336,7 @@ export default function AdminPanel() {
                   <TableHead>Position</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Joined</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -265,6 +354,42 @@ export default function AdminPanel() {
                     </TableCell>
                     <TableCell>
                       {new Date(user.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive cursor-pointer">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Reset User's Votes
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Reset Votes for {user.email}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete all votes, rankings, and sessions for this user. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleResetUserVotes(user.id, user.email)}
+                                  className="bg-destructive hover:bg-destructive/90"
+                                >
+                                  Reset User Votes
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
