@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { ArrowLeft, UserPlus, Shield, Users, TrendingUp, Trash2, MoreVertical, BarChart3, Eye, FileText } from 'lucide-react';
+import { ArrowLeft, UserPlus, Shield, Users, TrendingUp, Trash2, MoreVertical, BarChart3, Eye, FileText, Image } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import UserRankingsModal from '@/components/admin/UserRankingsModal';
@@ -219,6 +219,10 @@ export default function AdminPanel() {
             <Button onClick={() => navigate('/admin/content')} variant="outline" className="gap-2">
               <FileText className="h-4 w-4" />
               Content Manager
+            </Button>
+            <Button onClick={() => navigate('/admin/profile-images')} variant="outline" className="gap-2">
+              <Image className="h-4 w-4" />
+              Profile Images
             </Button>
             <Button onClick={() => navigate('/admin/analytics')} className="gap-2">
               <BarChart3 className="h-4 w-4" />

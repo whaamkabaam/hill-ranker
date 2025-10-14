@@ -14,6 +14,7 @@ import AdminPanel from "./pages/admin/AdminPanel";
 import AdminAnalytics from "./pages/admin/Analytics";
 import PairwiseMatrix from "./pages/admin/PairwiseMatrix";
 import ContentManagement from "./pages/admin/ContentManagement";
+import ProfileImageManager from "./pages/admin/ProfileImageManager";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 
@@ -67,6 +68,11 @@ const App = () => (
             <Route path="/admin/content" element={
               <ProtectedRoute>
                 <ContentManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/profile-images" element={
+              <ProtectedRoute>
+                <ProfileImageManager />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
