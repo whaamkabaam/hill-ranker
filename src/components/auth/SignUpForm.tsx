@@ -89,7 +89,7 @@ export const SignUpForm = ({ onSuccess }: SignUpFormProps) => {
         <Input
           id="signup-name"
           type="text"
-          placeholder="John Doe"
+          placeholder="Felix Holtkamp"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           required
