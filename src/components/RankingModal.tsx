@@ -89,13 +89,15 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
       className={`relative rounded-lg border-2 bg-gradient-to-br ${rankColors[rank]} p-3 ${
-        isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"
+        isDragging ? "opacity-50" : ""
       } ${isSwapped ? "ring-2 ring-primary ring-offset-2" : ""}`}
     >
       {/* Drag handle - centered at top */}
-      <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full p-1.5 bg-background border border-border shadow-sm z-10">
+      <div 
+        {...listeners}
+        className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full p-1.5 bg-background border border-border shadow-sm z-10 cursor-grab active:cursor-grabbing"
+      >
         <GripVertical className="w-4 h-4 text-muted-foreground" />
       </div>
 
@@ -107,13 +109,9 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
         </p>
       </div>
 
-      {/* Image */}
+      {/* Image - clickable via parent wrapper for preview */}
       <div 
         className="aspect-square rounded-md overflow-hidden mb-3 border border-border cursor-pointer hover:border-primary transition-colors"
-        onClick={(e) => {
-          e.stopPropagation();
-          onReplace(image);
-        }}
       >
         <img
           src={image.image_url}
@@ -143,6 +141,7 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
               variant="secondary"
               size="sm"
               className="w-full text-xs h-7"
+              onClick={(e) => e.stopPropagation()}
             >
               <RefreshCw className="w-3 h-3 mr-1" />
               Replace
@@ -194,6 +193,7 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
         <Slider
           value={[rating]}
           onValueChange={(value) => onRatingChange(value[0])}
+          onPointerDown={(e) => e.stopPropagation()}
           min={1}
           max={10}
           step={0.1}

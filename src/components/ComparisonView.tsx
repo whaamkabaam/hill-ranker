@@ -359,6 +359,9 @@ export const ComparisonView = ({
   // Track which image is the actual champion (by ID, not position)
   const [championId, setChampionId] = useState<string | null>(null);
   
+  // Image gallery state for preview navigation
+  const [previewImageIndex, setPreviewImageIndex] = useState<number>(0);
+  
   // Session state
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -886,10 +889,10 @@ export const ComparisonView = ({
         setAnimationState('replacing-left');
         setImagesLoaded(prev => ({ ...prev, left: false }));
         
-        // Update championId to the challenger (new champion)
-        setChampionId(challenger.id);
-        
         setTimeout(() => {
+          // Update championId to the challenger (new champion) - moved inside setTimeout for sync
+          setChampionId(challenger.id);
+          
           // The challenger becomes the new champion (but we swap display positions)
           const newChampion = challenger;
           
@@ -1228,6 +1231,14 @@ export const ComparisonView = ({
                 isKing={champion.id === championId}
                 onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
                 blindMode={true}
+                allImages={champion && challenger ? [
+                  { url: champion.image_url, name: champion.model_name },
+                  { url: challenger.image_url, name: challenger.model_name }
+                ] : undefined}
+                currentIndex={0}
+                onNavigate={(direction: 'prev' | 'next') => {
+                  if (direction === 'next') setPreviewImageIndex(1);
+                }}
               />
             )}
           </div>
@@ -1253,6 +1264,14 @@ export const ComparisonView = ({
                 isKing={challenger.id === championId}
                 onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
                 blindMode={true}
+                allImages={champion && challenger ? [
+                  { url: champion.image_url, name: champion.model_name },
+                  { url: challenger.image_url, name: challenger.model_name }
+                ] : undefined}
+                currentIndex={1}
+                onNavigate={(direction: 'prev' | 'next') => {
+                  if (direction === 'prev') setPreviewImageIndex(0);
+                }}
               />
             )}
           </div>

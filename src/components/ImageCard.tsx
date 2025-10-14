@@ -8,9 +8,13 @@ interface ImageCardProps {
   isKing?: boolean;
   onImageLoad?: () => void;
   blindMode?: boolean;
+  // Gallery navigation props
+  allImages?: { url: string; name: string }[];
+  currentIndex?: number;
+  onNavigate?: (direction: 'prev' | 'next') => void;
 }
 
-export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blindMode = false }: ImageCardProps) => {
+export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blindMode = false, allImages, currentIndex, onNavigate }: ImageCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -79,6 +83,9 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
         modelName={blindMode ? `Image ${side === "left" ? "A" : "B"}` : modelName}
         open={showPreview}
         onOpenChange={setShowPreview}
+        allImages={allImages}
+        currentIndex={currentIndex}
+        onNavigate={onNavigate}
       />
     </div>
   );
