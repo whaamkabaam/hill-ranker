@@ -818,8 +818,9 @@ export const ComparisonView = ({
           <div 
             className={`flex-1 transition-all duration-500 ease-out ${
               animationState === 'right-wins' ? '-translate-x-[120%] opacity-0' : 
-              animationState === 'clearing-right' ? '-translate-x-[120%] opacity-0' :  // Stay hidden during clear
-              'translate-x-0 opacity-100'  // Visible in all other states
+              animationState === 'clearing-right' ? '-translate-x-[120%] opacity-0' :
+              animationState === 'entering-challenger' ? 'translate-x-0 opacity-100' :
+              'translate-x-0 opacity-100'
             }`}
           >
             {!imagesLoaded.left && (
