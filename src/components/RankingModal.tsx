@@ -270,9 +270,7 @@ export const RankingModal = ({
       
       // Show warnings for quality issues
       if (metrics.qualityFlags.length > 0) {
-        if (metrics.qualityFlags.includes('random_voting')) {
-          toast.warning('Low consistency detected in your votes. Please review your ranking.');
-        } else if (metrics.qualityFlags.includes('too_fast')) {
+        if (metrics.qualityFlags.includes('too_fast')) {
           toast.info('You voted quite quickly. Please ensure your ranking is accurate.');
         }
       }
@@ -398,16 +396,6 @@ export const RankingModal = ({
             <h3 className="font-medium text-sm">Voting Quality Metrics</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Consistency Score</p>
-                <p className={`font-medium ${
-                  qualityMetrics.consistencyScore >= 70 ? 'text-green-500' :
-                  qualityMetrics.consistencyScore >= 50 ? 'text-yellow-500' :
-                  'text-red-500'
-                }`}>
-                  {qualityMetrics.consistencyScore.toFixed(1)}%
-                </p>
-              </div>
-              <div>
                 <p className="text-muted-foreground">Vote Certainty</p>
                 <p className={`font-medium ${
                   qualityMetrics.voteCertainty >= 70 ? 'text-green-500' :
@@ -422,15 +410,6 @@ export const RankingModal = ({
               <p className="text-xs text-yellow-500">
                 ⚠️ {qualityMetrics.transitivityViolations} transitivity violation(s) detected
               </p>
-            )}
-            {qualityMetrics.qualityFlags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {qualityMetrics.qualityFlags.map(flag => (
-                  <span key={flag} className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded">
-                    {flag.replace(/_/g, ' ')}
-                  </span>
-                ))}
-              </div>
             )}
           </div>
         )}

@@ -150,11 +150,6 @@ export const ReviewRankings = ({ userId }: ReviewRankingsProps) => {
               
               {/* Quality Metrics */}
               <div className="flex flex-wrap gap-2">
-                {ranking.consistency_score !== null && (
-                  <Badge variant={getQualityBadgeColor(ranking.consistency_score)}>
-                    {ranking.consistency_score.toFixed(0)}% Consistent
-                  </Badge>
-                )}
                 {ranking.vote_certainty !== null && (
                   <Badge variant="outline">
                     {ranking.vote_certainty.toFixed(0)}% Certain

@@ -10,10 +10,10 @@ const tips = [
   'Pay attention to text rendering - AI models often struggle with accurate text.',
   'Check for anatomical accuracy and realistic proportions in people and objects.',
   'Evaluate shadows and reflections - do they make physical sense?',
-  'Don\'t rush! Taking 5-10 seconds per comparison improves your consistency score.',
+  'Take your time! A thoughtful evaluation leads to better results.',
   'If two images are truly equal in quality, use the tie option.',
   'Background details matter too - check for coherence and logical elements.',
-  'Your votes help improve AI models - be thoughtful and consistent!',
+  'Your votes help improve AI models - be thoughtful!',
 ];
 
 export default function ComparisonTips() {
