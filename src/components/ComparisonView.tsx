@@ -224,8 +224,8 @@ export const ComparisonView = ({
   useEffect(() => {
     if (isLoading || allPairs.length === 0) return;
 
-    // Only trigger if we actually have all pairs completed AND have pairs to compare
-    if (completedPairs.size >= allPairs.length && allPairs.length > 0) {
+    // Trigger completion when all pairs are done
+    if (completedPairs.size === allPairs.length && allPairs.length > 0) {
       console.log(`✅ Completion triggered: ${completedPairs.size}/${allPairs.length} pairs completed`);
       handleComparisonComplete();
     }
@@ -342,6 +342,12 @@ export const ComparisonView = ({
 
   const handleSelection = async (winner: Image) => {
     if (!currentPair) return;
+    
+    // Prevent voting if all pairs are already completed
+    if (completedPairs.size >= allPairs.length) {
+      console.log('⚠️ All pairs already completed, ignoring vote');
+      return;
+    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -398,6 +404,12 @@ export const ComparisonView = ({
   const moveToNextPair = () => {
     console.log('🔄 Moving to next pair. Current:', currentPairIndex, 'Completed:', completedPairs.size, 'Total:', allPairs.length);
     
+    // Check if all pairs are completed
+    if (completedPairs.size >= allPairs.length) {
+      console.log('🏁 All pairs completed, triggering completion');
+      return;
+    }
+    
     const nextIndex = allPairs.findIndex((p, idx) => 
       idx > currentPairIndex && !completedPairs.has(p.pairId)
     );
@@ -412,7 +424,7 @@ export const ComparisonView = ({
         console.log('✅ Found incomplete pair at index:', firstIncomplete);
         setCurrentPairIndex(firstIncomplete);
       } else {
-        console.log('🏁 No more pairs to compare');
+        console.log('🏁 No more pairs to compare, triggering completion');
       }
     }
   };
