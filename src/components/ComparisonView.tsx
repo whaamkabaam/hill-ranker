@@ -628,12 +628,15 @@ export const ComparisonView = ({
           setChallenger(remainingImages[0]);
           setRemainingImages(prev => prev.slice(1));
           
-          // Small delay to ensure new image is mounted
+          // Small delay to ensure new image is mounted at initial position
           await new Promise(resolve => setTimeout(resolve, 50));
           
-          // Trigger enter animation
-          setAnimationState('idle');
+          // Give browser time to paint the off-screen-right position
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
+          // NOW trigger enter animation by removing the mounting flag
           setNewChallengerMounting(false);
+          setAnimationState('idle');
           setChampionTransitioning(false); // Now left side can animate normally again
           setPendingVote(false); // Unlock immediately when state is ready
           
