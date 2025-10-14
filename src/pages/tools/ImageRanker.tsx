@@ -48,6 +48,8 @@ const ImageRanker = () => {
   const [isPromptInProgress, setIsPromptInProgress] = useState(true);
   // Track modal version to force new instance
   const [modalVersion, setModalVersion] = useState(0);
+  // Track which prompt the winners belong to
+  const [winnersPromptId, setWinnersPromptId] = useState<string | null>(null);
   // Track if all prompts are completed
   const [allPromptsCompleted, setAllPromptsCompleted] = useState(false);
   // Track if user has voted at least once (for leaderboard access)
@@ -65,15 +67,23 @@ const ImageRanker = () => {
     checkUserParticipation();
   }, [prompts, user?.id]);
   
-  // Force modal to show when winners are populated
+  // Force modal to show when winners are populated - but only for current prompt
   useEffect(() => {
-    if (winners.length >= 3 && !showRanking) {
-      console.log('🎯 Winners populated, ensuring modal shows');
+    const currentPromptId = prompts[currentPromptIndex]?.id;
+    if (winners.length >= 3 && winnersPromptId === currentPromptId && !showRanking) {
+      console.log('🎯 Winners match current prompt, showing modal');
       setTimeout(() => {
         setShowRanking(true);
       }, 100);
+    } else if (winners.length >= 3 && winnersPromptId !== currentPromptId) {
+      console.warn('⚠️ Winners belong to different prompt, clearing', {
+        winnersPromptId,
+        currentPromptId
+      });
+      setWinners([]);
+      setWinnersPromptId(null);
     }
-  }, [winners, showRanking]);
+  }, [winners, winnersPromptId, prompts, currentPromptIndex, showRanking]);
   useEffect(() => {
     if (activeTab === 'progress') {
       checkUserParticipation();
@@ -140,7 +150,7 @@ const ImageRanker = () => {
   const handleComparisonComplete = (winnerImages: ImageWithWins[]) => {
     console.log('📊 ImageRanker handleComparisonComplete called');
     console.log('📊 Received winners:', winnerImages);
-    console.log('📊 Current winners state before update:', winners);
+    console.log('📊 Current prompt:', currentPrompt.text);
 
     // PHASE 1: Validate winners before proceeding
     if (!winnerImages || winnerImages.length < 3) {
@@ -149,7 +159,10 @@ const ImageRanker = () => {
       setShowRanking(false); // ✅ Ensure modal doesn't open
       return;
     }
-    console.log('✅ Setting winners and showing ranking modal');
+    
+    // Store which prompt these winners belong to
+    console.log('✅ Setting winners for prompt:', currentPrompt.id);
+    setWinnersPromptId(currentPrompt.id);
     setWinners(winnerImages);
     setShowRanking(true);
     setModalVersion(prev => prev + 1); // Force new modal instance
@@ -164,6 +177,7 @@ const ImageRanker = () => {
     setTimeout(() => {
       console.log('🧹 Clearing winners after skip');
       setWinners([]);
+      setWinnersPromptId(null);
     }, 300);
 
     // Find next uncompleted prompt
@@ -218,12 +232,11 @@ const ImageRanker = () => {
   };
   const handleRankingComplete = async () => {
     console.log('✅ Ranking complete, closing modal');
+    
+    // IMMEDIATE clear to prevent race condition
+    setWinners([]);
+    setWinnersPromptId(null);
     setShowRanking(false);
-    
-    // Add delay before clearing winners to prevent re-trigger
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    setWinners([]); // PHASE 1: Clear winners after delay
     setIsPromptInProgress(true); // PHASE 3: Ready for next prompt
 
     // Check if this was user's first vote
@@ -455,7 +468,7 @@ const ImageRanker = () => {
         </div>
       </div>
 
-      {winners.length >= 3 && <RankingModal key={modalVersion} open={showRanking} winners={winners} promptId={currentPrompt.id} userEmail={user?.email || ''} startTime={startTime} onComplete={handleRankingComplete} />}
+      {winners.length >= 3 && winnersPromptId === currentPrompt.id && <RankingModal key={modalVersion} open={showRanking} winners={winners} promptId={currentPrompt.id} userEmail={user?.email || ''} startTime={startTime} onComplete={handleRankingComplete} />}
     </>;
 };
 export default ImageRanker;
