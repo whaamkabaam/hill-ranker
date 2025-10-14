@@ -130,7 +130,9 @@ export default function QualityMetricsDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {metrics.map((metric) => (
+            {metrics
+              .filter(metric => !metric.metric.toLowerCase().includes('transitivity') && !metric.metric.toLowerCase().includes('violation'))
+              .map((metric) => (
               <div key={metric.metric} className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                   <p className="text-sm text-muted-foreground">{metric.metric}</p>
@@ -157,9 +159,7 @@ export default function QualityMetricsDashboard() {
                 <TableHead className="text-right">Consistency</TableHead>
                 <TableHead className="text-right">Certainty</TableHead>
                 <TableHead className="text-right">Avg Time (s)</TableHead>
-                <TableHead className="text-right">Violations</TableHead>
                 <TableHead className="text-right">Total Votes</TableHead>
-                <TableHead>Quality Flags</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -179,25 +179,7 @@ export default function QualityMetricsDashboard() {
                       {user.avgVoteTime}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={user.transitivityViolations === 0 ? 'default' : 'destructive'}>
-                      {user.transitivityViolations}
-                    </Badge>
-                  </TableCell>
                   <TableCell className="text-right">{user.totalVotes}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {user.qualityFlags.length === 0 ? (
-                        <Badge variant="outline">No flags</Badge>
-                      ) : (
-                        user.qualityFlags.map((flag) => (
-                          <Badge key={flag} variant="destructive" className="text-xs">
-                            {flag.replace(/_/g, ' ')}
-                          </Badge>
-                        ))
-                      )}
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
