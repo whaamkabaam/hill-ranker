@@ -366,6 +366,9 @@ export const ComparisonView = ({
   // Key fix: Track when challenger container needs to reset position
   const [isResettingChallenger, setIsResettingChallenger] = useState(false);
   
+  // NEW: Track champion's exit animation separately
+  const [isChampionAnimatingOut, setIsChampionAnimatingOut] = useState(false);
+  
   const estimatedTotal = Math.ceil(images.length * 2.5);
 
   useEffect(() => {
@@ -753,12 +756,9 @@ export const ComparisonView = ({
       }
 
       const isChampionWinner = winner.id === champion.id;
-      const animationTime = 400; // Unified animation time
+      const animationTime = 300; // Faster animation time
 
-      // Trigger animation
-      setAnimationState(isChampionWinner ? 'left-wins' : 'right-wins-promote');
-
-      // Record vote (champion is always on left, challenger on right)
+      // Record vote
       const { error } = await supabase.from("votes").insert({
         prompt_id: promptId,
         user_email: userEmail,
@@ -789,12 +789,9 @@ export const ComparisonView = ({
           .eq('id', sessionId);
       }
 
-      // Wait for exit animation
-      await new Promise(resolve => setTimeout(resolve, animationTime));
-
       if (isChampionWinner) {
-        // Left wins: Champion defended throne, get new challenger
-        console.log('🎬 Left wins: Champion defends, getting new challenger');
+        // Left wins: Champion defends, new challenger slides in
+        setAnimationState('left-wins');
         setTimeout(() => {
           if (remainingImages.length > 0) {
             setChallenger(remainingImages[0]);
@@ -806,15 +803,13 @@ export const ComparisonView = ({
           setPendingVote(false);
         }, animationTime);
       } else {
-        // Right wins: Multi-step animation sequence
-        console.log('🎬 Right wins: Starting promotion sequence');
-        
-        setTimeout(() => {
-          // Instantly snap challenger container off-screen to the right
-          setIsResettingChallenger(true);
-          setSkipNextChampionAnimation(true);
+        // Right wins: Multi-step animation
+        setIsChampionAnimatingOut(true); // 1. Champion slides out
+        setAnimationState('right-wins-promote'); // 2. Challenger slides to champion's position
 
-          // Update the images
+        setTimeout(() => {
+          setIsResettingChallenger(true); // 3. Prepare for new challenger
+          setSkipNextChampionAnimation(true);
           setChampion(challenger);
           if (remainingImages.length > 0) {
             setChallenger(remainingImages[0]);
@@ -822,9 +817,10 @@ export const ComparisonView = ({
           } else {
             setChallenger(null);
           }
+          setIsChampionAnimatingOut(false);
         }, animationTime);
       }
-      
+
     } catch (error: any) {
       console.error("Error saving vote:", error);
       
@@ -1050,8 +1046,8 @@ export const ComparisonView = ({
         <div className="flex gap-8 items-start relative overflow-hidden">
           {/* Champion (Left Side) */}
           <div 
-            className={`flex-1 transition-all duration-400 ease-in-out ${
-              animationState === 'right-wins-promote' ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'
+            className={`flex-1 transition-all duration-300 ease-in-out ${
+              isChampionAnimatingOut ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'
             }`}
           >
             {!imagesLoaded.left && (
@@ -1074,13 +1070,13 @@ export const ComparisonView = ({
           <div 
             className={`flex-1 ${
               isResettingChallenger
-                ? 'transition-none opacity-0 translate-x-full' // Instantly snap off-screen
-                : `transition-all duration-400 ease-in-out ${
+                ? 'transition-none opacity-0 translate-x-full'
+                : `transition-all duration-300 ease-in-out ${
                     animationState === 'left-wins'
-                      ? 'opacity-0 translate-x-full' // Animate out to the right
+                      ? 'opacity-0 translate-x-full'
                       : animationState === 'right-wins-promote'
-                      ? 'opacity-100 -translate-x-full' // Animate to the left position
-                      : 'opacity-100 translate-x-0' // Animate into place from the right
+                      ? 'opacity-100 -translate-x-full'
+                      : 'opacity-100 translate-x-0'
                   }`
             }`}
           >
