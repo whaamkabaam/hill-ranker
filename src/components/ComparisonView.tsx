@@ -771,14 +771,14 @@ export const ComparisonView = ({
           setPendingVote(false);
         }, animationTime);
       } else {
-        // Challenger wins: Replace both sides simultaneously
+        // Challenger wins: Replace BOTH sides (no position swapping!)
         setAnimationState('replacing-both');
         
         setTimeout(() => {
-          // Old challenger becomes new champion
+          // The winner becomes the new champion (left side gets new data)
           setChampion(challenger);
           
-          // Bring in new challenger
+          // Right side gets a new challenger
           if (remainingImages.length > 0) {
             setChallenger(remainingImages[0]);
             setRemainingImages(prev => prev.slice(1));
@@ -1012,7 +1012,6 @@ export const ComparisonView = ({
           <div 
             className="flex-1 relative transition-all duration-300 ease-in-out"
             style={{
-              transform: animationState === 'replacing-both' ? 'translateX(-100%)' : 'translateX(0)',
               opacity: animationState === 'replacing-both' ? 0 : 1,
             }}
           >
@@ -1038,14 +1037,8 @@ export const ComparisonView = ({
           <div 
             className="flex-1 relative transition-all duration-300 ease-in-out"
             style={{
-              transform: 
-                animationState === 'replacing-right' ? 'translateX(100%)' :
-                animationState === 'replacing-both' ? 'translateX(-100%)' :
-                'translateX(0)',
               opacity: 
-                animationState === 'replacing-right' ? 0 :
-                animationState === 'replacing-both' ? 1 : 
-                1,
+                animationState === 'replacing-right' || animationState === 'replacing-both' ? 0 : 1,
             }}
           >
             {challenger && !imagesLoaded.right && (
