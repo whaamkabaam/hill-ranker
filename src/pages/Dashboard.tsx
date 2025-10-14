@@ -63,10 +63,7 @@ const Dashboard = () => {
           
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <div className="flex items-center gap-2 justify-end">
-                <p className="text-sm font-medium">{getFirstName()}</p>
-                {role}
-              </div>
+              <p className="text-sm font-medium">{getFirstName()}</p>
               {jobTitle && <p className="text-xs text-muted-foreground">{jobTitle}</p>}
               <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>

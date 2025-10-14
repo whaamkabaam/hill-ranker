@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Loader2, Trophy, Star, TrendingUp, Users } from 'lucide-react';
 import { parseModelNameFromFile } from '@/lib/modelNameParser';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ModelStats {
   modelName: string;
@@ -15,6 +16,8 @@ interface ModelStats {
   avgRating: number;
   avgPosition: number;
   totalAppearances: number;
+  totalRatingsSum: number;
+  totalRatingsCount: number;
 }
 
 interface PromptStats {
@@ -100,9 +103,15 @@ export function GlobalLeaderboard() {
             avgRating: 0,
             avgPosition: 0,
             totalAppearances: 0,
+            totalRatingsSum: 0,
+            totalRatingsCount: 0,
           };
           stats.firstPlaceCount++;
           stats.totalAppearances++;
+          if (ranking.rating_first && ranking.rating_first > 0) {
+            stats.totalRatingsSum += ranking.rating_first;
+            stats.totalRatingsCount++;
+          }
           modelStatsMap.set(firstModel, stats);
         }
 
@@ -116,9 +125,15 @@ export function GlobalLeaderboard() {
             avgRating: 0,
             avgPosition: 0,
             totalAppearances: 0,
+            totalRatingsSum: 0,
+            totalRatingsCount: 0,
           };
           stats.secondPlaceCount++;
           stats.totalAppearances++;
+          if (ranking.rating_second && ranking.rating_second > 0) {
+            stats.totalRatingsSum += ranking.rating_second;
+            stats.totalRatingsCount++;
+          }
           modelStatsMap.set(secondModel, stats);
         }
 
@@ -132,9 +147,15 @@ export function GlobalLeaderboard() {
             avgRating: 0,
             avgPosition: 0,
             totalAppearances: 0,
+            totalRatingsSum: 0,
+            totalRatingsCount: 0,
           };
           stats.thirdPlaceCount++;
           stats.totalAppearances++;
+          if (ranking.rating_third && ranking.rating_third > 0) {
+            stats.totalRatingsSum += ranking.rating_third;
+            stats.totalRatingsCount++;
+          }
           modelStatsMap.set(thirdModel, stats);
         }
       });
@@ -147,11 +168,10 @@ export function GlobalLeaderboard() {
           stats.thirdPlaceCount * 3;
         stats.avgPosition = totalPositionSum / stats.totalAppearances;
         
-        // Calculate win rate as a score (higher is better)
-        stats.avgRating = (
-          (stats.firstPlaceCount * 3 + stats.secondPlaceCount * 2 + stats.thirdPlaceCount * 1) / 
-          stats.totalAppearances
-        );
+        // Calculate average realism rating (out of 10)
+        stats.avgRating = stats.totalRatingsCount > 0
+          ? stats.totalRatingsSum / stats.totalRatingsCount
+          : 0;
         
         return stats;
       });
@@ -272,48 +292,61 @@ export function GlobalLeaderboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">Rank</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead className="text-center">🥇 1st</TableHead>
-                <TableHead className="text-center">🥈 2nd</TableHead>
-                <TableHead className="text-center">🥉 3rd</TableHead>
-                <TableHead className="text-center">Score</TableHead>
-                <TableHead className="text-center">Avg Position</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {modelStats.map((model, index) => (
-                <TableRow key={model.modelName}>
-                  <TableCell className="font-bold">
-                    {index + 1}
-                    {index === 0 && <Trophy className="inline h-4 w-4 ml-1 text-yellow-500" />}
-                  </TableCell>
-                  <TableCell className="font-medium">{model.modelName}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="default">{model.firstPlaceCount}</Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="secondary">{model.secondPlaceCount}</Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline">{model.thirdPlaceCount}</Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                      <span className="font-medium">{model.avgRating.toFixed(2)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center text-muted-foreground">
-                    {model.avgPosition.toFixed(2)}
-                  </TableCell>
+          <TooltipProvider>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">Rank</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead className="text-center">🥇 1st</TableHead>
+                  <TableHead className="text-center">🥈 2nd</TableHead>
+                  <TableHead className="text-center">🥉 3rd</TableHead>
+                  <TableHead className="text-center">
+                    <Tooltip>
+                      <TooltipTrigger className="cursor-help">Score</TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Average realism rating (out of 10) given by users who ranked this model. Higher scores indicate more realistic image generation.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TableHead>
+                  <TableHead className="text-center">Avg Position</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {modelStats.map((model, index) => (
+                  <TableRow key={model.modelName}>
+                    <TableCell className="font-bold">
+                      {index + 1}
+                      {index === 0 && <Trophy className="inline h-4 w-4 ml-1 text-yellow-500" />}
+                    </TableCell>
+                    <TableCell className="font-medium">{model.modelName}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="default">{model.firstPlaceCount}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="secondary">{model.secondPlaceCount}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline">{model.thirdPlaceCount}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {model.totalRatingsCount > 0 ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                          <span className="font-medium">{model.avgRating.toFixed(1)}/10</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center text-muted-foreground">
+                      {model.avgPosition.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
         </CardContent>
       </Card>
 
