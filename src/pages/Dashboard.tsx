@@ -144,31 +144,6 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Advanced Analytics */}
-          <div className="glass-card rounded-xl p-6 cursor-pointer group hover-lift animate-fade-in" onClick={() => navigate('/analytics')}>
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center bg-primary/10">
-                <BarChart3 className="w-8 h-8 text-primary" />
-              </div>
-              <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
-                Active
-              </span>
-            </div>
-
-            <h3 className="text-lg font-semibold mb-2">Advanced Analytics</h3>
-            <p className="text-sm text-muted-foreground mb-4">View model performance, quality metrics, and leaderboards</p>
-
-            <div className="flex items-center justify-between pt-4 border-t">
-              <span className="text-sm text-muted-foreground">
-                Global insights
-              </span>
-              <Button size="sm" className="gap-2 group-hover:gap-3 transition-all">
-                View
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
           <ToolRequestDialog />
         </div>
       </main>
