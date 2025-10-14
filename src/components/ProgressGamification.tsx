@@ -55,7 +55,7 @@ export default function ProgressGamification({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">
-          {completed} / {total} comparisons
+          {completed} / {total} comparisons ({total - completed} left)
         </span>
         <span className="text-sm text-muted-foreground">{percentage.toFixed(0)}%</span>
       </div>

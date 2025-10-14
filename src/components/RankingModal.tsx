@@ -87,16 +87,14 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={`relative rounded-lg border-2 bg-gradient-to-br ${rankColors[rank]} p-3 ${
         isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"
       } ${isSwapped ? "ring-2 ring-primary ring-offset-2" : ""}`}
     >
       {/* Drag handle - centered at top */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute -top-3 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing hover:bg-background/80 rounded-full p-1.5 bg-background border border-border shadow-sm transition-colors z-10"
-      >
+      <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full p-1.5 bg-background border border-border shadow-sm z-10">
         <GripVertical className="w-4 h-4 text-muted-foreground" />
       </div>
 

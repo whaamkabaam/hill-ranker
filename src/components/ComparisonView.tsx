@@ -680,6 +680,13 @@ export const ComparisonView = ({
 
       const newComparisonCount = totalComparisons + 1;
       setTotalComparisons(newComparisonCount);
+      
+      console.log('📊 Vote recorded, updating counts:', {
+        oldCount: totalComparisons,
+        newCount: newComparisonCount,
+        total: estimatedTotal,
+        remaining: estimatedTotal - newComparisonCount
+      });
 
       // Update session progress
       if (sessionId) {
