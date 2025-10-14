@@ -239,6 +239,7 @@ export const ComparisonView = ({
   const [remainingImages, setRemainingImages] = useState<Image[]>([]);
   const [totalComparisons, setTotalComparisons] = useState(0);
   const [animationState, setAnimationState] = useState<AnimationState>('idle');
+  const [newChallengerMounting, setNewChallengerMounting] = useState(false);
   
   // Session state
   const [isLoading, setIsLoading] = useState(true);
@@ -364,12 +365,24 @@ export const ComparisonView = ({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = async (e: KeyboardEvent) => {
+      // Ignore if focused on an input/textarea/select
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        return;
+      }
+
+      // Ignore if images not loaded or animation in progress
       if (!champion || !challenger || animationState !== 'idle') return;
 
-      if (e.key === "ArrowLeft") {
-        await handleSelection(champion);
-      } else if (e.key === "ArrowRight") {
-        await handleSelection(challenger);
+      // Only handle arrow keys
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault(); // Prevent default browser behavior (scrolling, text selection)
+        
+        if (e.key === "ArrowLeft") {
+          await handleSelection(champion);
+        } else if (e.key === "ArrowRight") {
+          await handleSelection(challenger);
+        }
       }
     };
 
@@ -557,6 +570,9 @@ export const ComparisonView = ({
         setChampion(challenger);
         
         if (remainingImages.length > 0) {
+          // Signal new challenger incoming
+          setNewChallengerMounting(true);
+          
           // Mount new challenger
           setChallenger(remainingImages[0]);
           setRemainingImages(prev => prev.slice(1));
@@ -566,6 +582,7 @@ export const ComparisonView = ({
           
           // Trigger enter animation
           setAnimationState('idle');
+          setNewChallengerMounting(false);
           
           // Wait for enter animation to complete
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -826,7 +843,8 @@ export const ComparisonView = ({
           <div 
             className={`flex-1 transition-all duration-500 ease-out ${
               animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
-              animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)] opacity-0' :
+              animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' :
+              newChallengerMounting ? 'translate-x-[120%]' :
               'translate-x-0 opacity-100'
             }`}
           >
