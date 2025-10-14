@@ -23,7 +23,7 @@ import {
   horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trophy, Sparkles, BarChart3, ArrowDownUp, ChevronDown, ChevronUp } from "lucide-react";
+import { GripVertical, Trophy, Sparkles, ArrowDownUp, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Image {
   id: string;
@@ -566,38 +566,6 @@ export const RankingModal = ({
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Visual Quality Metrics */}
-        {qualityMetrics && (
-          <div className="bg-muted/50 rounded-lg p-4 space-y-3 mt-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-primary" />
-                Vote Quality
-              </h3>
-              <span className="text-lg font-bold text-primary">
-                {(qualityMetrics.voteCertainty * 100).toFixed(0)}%
-              </span>
-            </div>
-            
-            {/* Visual progress bar */}
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-primary/50 to-primary transition-all duration-300"
-                style={{ width: `${qualityMetrics.voteCertainty * 100}%` }}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Consistency: {(qualityMetrics.consistencyScore * 100).toFixed(0)}%</span>
-              {qualityMetrics.transitivityViolations > 0 && (
-                <span className="text-amber-600 dark:text-amber-400">
-                  ⚠️ {qualityMetrics.transitivityViolations} conflicts
-                </span>
-              )}
-            </div>
           </div>
         )}
 
