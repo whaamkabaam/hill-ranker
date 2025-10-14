@@ -339,9 +339,33 @@ const ImageRanker = () => {
               {allPromptsCompleted ? <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
                   <h2 className="text-2xl font-bold">🎉 All Prompts Completed!</h2>
                   <p className="text-muted-foreground">Great work! Check the Progress tab to see your results.</p>
-                  <Button onClick={() => setActiveTab('progress')} className="mt-4">
-                    View Progress
-                  </Button>
+                  <div className="flex gap-3 mt-4">
+                    <Button onClick={() => setActiveTab('progress')}>
+                      View Progress
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={async () => {
+                        if (!user?.id) return;
+                        try {
+                          await supabase
+                            .from('prompt_completions')
+                            .delete()
+                            .eq('user_id', user.id);
+                          
+                          setAllPromptsCompleted(false);
+                          setCurrentPromptIndex(0);
+                          setActiveTab('ranking');
+                          toast.success("Progress reset! Starting fresh.");
+                        } catch (error) {
+                          console.error("Error resetting progress:", error);
+                          toast.error("Failed to reset progress");
+                        }
+                      }}
+                    >
+                      Start Over
+                    </Button>
+                  </div>
                 </div> : isPromptInProgress ? <ComparisonView key={currentPrompt.id} promptId={currentPrompt.id} promptText={currentPrompt.text} images={images} userEmail={user?.email || ''} onComplete={handleComparisonComplete} onSkip={handleSkip} /> : <div className="flex items-center justify-center min-h-[400px]">
                   <p className="text-muted-foreground">Waiting for ranking submission...</p>
                 </div>}
