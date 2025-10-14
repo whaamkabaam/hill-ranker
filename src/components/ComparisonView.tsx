@@ -579,8 +579,14 @@ export const ComparisonView = ({
       const existingRanking = await checkExistingRanking(user.id, promptId);
       
       if (existingRanking) {
-        console.log('✅ User has already ranked this prompt, skipping tournament');
+        console.log('✅ User has already ranked this prompt, skipping to next prompt');
         setIsCompletingTournament(false);
+        toast.info("This prompt is already completed");
+        setTimeout(() => {
+          if (onSkip) {
+            onSkip();
+          }
+        }, 500);
         return;
       }
 
