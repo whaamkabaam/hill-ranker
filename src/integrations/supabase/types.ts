@@ -93,22 +93,31 @@ export type Database = {
           created_at: string | null
           id: string
           image_url: string
+          is_active: boolean | null
+          is_placeholder: boolean | null
           model_name: string
           prompt_id: string
+          uploaded_by: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
           image_url: string
+          is_active?: boolean | null
+          is_placeholder?: boolean | null
           model_name: string
           prompt_id: string
+          uploaded_by?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
           image_url?: string
+          is_active?: boolean | null
+          is_placeholder?: boolean | null
           model_name?: string
           prompt_id?: string
+          uploaded_by?: string | null
         }
         Relationships: [
           {
@@ -116,6 +125,13 @@ export type Database = {
             columns: ["prompt_id"]
             isOneToOne: false
             referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "images_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -180,22 +196,39 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          is_active: boolean | null
+          is_placeholder: boolean | null
           order_index: number
           text: string
+          uploaded_by: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
+          is_active?: boolean | null
+          is_placeholder?: boolean | null
           order_index: number
           text: string
+          uploaded_by?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
+          is_active?: boolean | null
+          is_placeholder?: boolean | null
           order_index?: number
           text?: string
+          uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "prompts_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rankings: {
         Row: {

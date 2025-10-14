@@ -58,6 +58,8 @@ const ImageRanker = () => {
       const { data, error } = await supabase
         .from("prompts")
         .select("*")
+        .eq('is_active', true)
+        .eq('is_placeholder', false)
         .order("order_index");
 
       if (error) throw error;
@@ -75,7 +77,9 @@ const ImageRanker = () => {
       const { data, error } = await supabase
         .from("images")
         .select("*")
-        .eq("prompt_id", promptId);
+        .eq("prompt_id", promptId)
+        .eq('is_active', true)
+        .eq('is_placeholder', false);
 
       if (error) throw error;
       setImages(data || []);
@@ -164,8 +168,9 @@ const ImageRanker = () => {
 
   if (prompts.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">No prompts available</p>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <p className="text-muted-foreground">No active prompts available</p>
+        <p className="text-sm text-muted-foreground">Contact admin to upload voting content</p>
       </div>
     );
   }

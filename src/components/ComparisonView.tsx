@@ -124,8 +124,8 @@ export const ComparisonView = ({
   // Initialize pairs and check for existing votes
   useEffect(() => {
     const initializePairs = async () => {
-      if (images.length < 2) {
-        toast.error("Need at least 2 images to compare");
+      if (images.length !== 4) {
+        toast.error(`Need exactly 4 images to compare (found ${images.length})`);
         setIsLoading(false);
         return;
       }
@@ -519,15 +519,33 @@ export const ComparisonView = ({
 
       if (completionError && completionError.code !== 'PGRST116') throw completionError;
 
-      // Reset component state
+      // Reset component state without page reload
       setVoteHistory([]);
       setCompletedPairs(new Set());
       setCurrentPairIndex(0);
       setSessionId(null);
-
-      // Reinitialize
-      window.location.reload();
-
+      
+      // Re-initialize pairs
+      const pairs = generateAllPairs(images);
+      setAllPairs(pairs);
+      
+      // Create new session
+      const { data: newSession } = await supabase
+        .from('comparison_sessions')
+        .insert({
+          user_id: user.id,
+          prompt_id: promptId,
+          total_comparisons: pairs.length,
+          completed_comparisons: 0,
+        })
+        .select()
+        .single();
+      
+      if (newSession) {
+        setSessionId(newSession.id);
+      }
+      
+      setIsLoading(false);
       toast.success("Votes reset. Starting fresh!");
     } catch (error) {
       console.error("Error resetting votes:", error);
