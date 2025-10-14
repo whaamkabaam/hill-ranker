@@ -28,7 +28,7 @@ interface ComparisonViewProps {
   onSkip?: () => void;
 }
 
-type AnimationState = 'idle' | 'left-wins' | 'right-wins' | 'right-wins-exit' | 'right-wins-promote' | 'right-wins-enter';
+type AnimationState = 'idle' | 'left-wins' | 'right-wins-promote';
 
 // Utility: Calculate Elo ratings from votes
 const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => {
@@ -363,6 +363,9 @@ export const ComparisonView = ({
   const [isCompletingTournament, setIsCompletingTournament] = useState(false);
   const [skipNextChampionAnimation, setSkipNextChampionAnimation] = useState(false);
   
+  // Key fix: Track when challenger container needs to reset position
+  const [isResettingChallenger, setIsResettingChallenger] = useState(false);
+  
   const estimatedTotal = Math.ceil(images.length * 2.5);
 
   useEffect(() => {
@@ -371,6 +374,19 @@ export const ComparisonView = ({
       setTimeout(() => setSkipNextChampionAnimation(false), 0);
     }
   }, [skipNextChampionAnimation]);
+
+  // Handle the challenger reset and entrance animation
+  useEffect(() => {
+    if (isResettingChallenger) {
+      // After snapping off-screen, animate the new challenger in from the right
+      const timer = setTimeout(() => {
+        setIsResettingChallenger(false);
+        setAnimationState('idle');
+        setPendingVote(false);
+      }, 50); // Brief delay allows CSS transition to kick in
+      return () => clearTimeout(timer);
+    }
+  }, [isResettingChallenger]);
 
   // Initialize King-of-the-Hill tournament
   useEffect(() => {
@@ -739,8 +755,8 @@ export const ComparisonView = ({
       const isChampionWinner = winner.id === champion.id;
       const animationTime = 400; // Unified animation time
 
-      // Trigger animation before DB call
-      setAnimationState(isChampionWinner ? 'left-wins' : 'right-wins-exit');
+      // Trigger animation
+      setAnimationState(isChampionWinner ? 'left-wins' : 'right-wins-promote');
 
       // Record vote (champion is always on left, challenger on right)
       const { error } = await supabase.from("votes").insert({
@@ -779,22 +795,26 @@ export const ComparisonView = ({
       if (isChampionWinner) {
         // Left wins: Champion defended throne, get new challenger
         console.log('🎬 Left wins: Champion defends, getting new challenger');
-        if (remainingImages.length > 0) {
-          setChallenger(remainingImages[0]);
-          setRemainingImages(prev => prev.slice(1));
-        } else {
-          setChallenger(null);
-        }
-        
-        // Reset to idle
-        setAnimationState('idle');
-        setPendingVote(false);
-      } else {
-        // Challenger wins sequence
-        setSkipNextChampionAnimation(true); // Prevent re-animation
-        setAnimationState('right-wins-promote');
-
         setTimeout(() => {
+          if (remainingImages.length > 0) {
+            setChallenger(remainingImages[0]);
+            setRemainingImages(prev => prev.slice(1));
+          } else {
+            setChallenger(null);
+          }
+          setAnimationState('idle');
+          setPendingVote(false);
+        }, animationTime);
+      } else {
+        // Right wins: Multi-step animation sequence
+        console.log('🎬 Right wins: Starting promotion sequence');
+        
+        setTimeout(() => {
+          // Instantly snap challenger container off-screen to the right
+          setIsResettingChallenger(true);
+          setSkipNextChampionAnimation(true);
+
+          // Update the images
           setChampion(challenger);
           if (remainingImages.length > 0) {
             setChallenger(remainingImages[0]);
@@ -802,12 +822,6 @@ export const ComparisonView = ({
           } else {
             setChallenger(null);
           }
-          setAnimationState('right-wins-enter');
-
-          setTimeout(() => {
-            setAnimationState('idle');
-            setPendingVote(false);
-          }, animationTime);
         }, animationTime);
       }
       
@@ -1034,12 +1048,10 @@ export const ComparisonView = ({
 
         {/* Comparison */}
         <div className="flex gap-8 items-start relative overflow-hidden">
-          {/* Champion (Left Side) - Exits left when right wins, stays when left wins */}
+          {/* Champion (Left Side) */}
           <div 
-            className={`flex-1 transition-all duration-300 ease-in-out ${
-              animationState === 'right-wins-exit' ? 'translate-x-[-120%] opacity-0' :
-              animationState === 'right-wins-promote' ? 'translate-x-0 opacity-100' : // Stay visible
-              'translate-x-0 opacity-100'
+            className={`flex-1 transition-all duration-400 ease-in-out ${
+              animationState === 'right-wins-promote' ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'
             }`}
           >
             {!imagesLoaded.left && (
@@ -1058,14 +1070,18 @@ export const ComparisonView = ({
             />
           </div>
 
-          {/* Challenger (Right Side) - Exits right when left wins, slides left when right wins */}
+          {/* Challenger (Right Side) */}
           <div 
-            className={`flex-1 transition-all duration-300 ease-in-out ${
-              animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
-              animationState === 'right-wins-exit' ? 'translate-x-0 opacity-100' :
-              animationState === 'right-wins-promote' ? 'translate-x-[-100%]' :
-              animationState === 'right-wins-enter' ? 'translate-x-0 opacity-100' :
-              'translate-x-0 opacity-100'
+            className={`flex-1 ${
+              isResettingChallenger
+                ? 'transition-none opacity-0 translate-x-full' // Instantly snap off-screen
+                : `transition-all duration-400 ease-in-out ${
+                    animationState === 'left-wins'
+                      ? 'opacity-0 translate-x-full' // Animate out to the right
+                      : animationState === 'right-wins-promote'
+                      ? 'opacity-100 -translate-x-full' // Animate to the left position
+                      : 'opacity-100 translate-x-0' // Animate into place from the right
+                  }`
             }`}
           >
             {!imagesLoaded.right && (
