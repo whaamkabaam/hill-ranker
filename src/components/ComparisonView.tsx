@@ -909,7 +909,7 @@ export const ComparisonView = ({
               championTransitioning ? 'opacity-0 pointer-events-none' :
               animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
               animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' :
-              newChallengerMounting ? 'translate-x-[120%]' :
+              newChallengerMounting ? '-translate-x-[120%]' :
               'translate-x-0 opacity-100'
             }`}
           >
