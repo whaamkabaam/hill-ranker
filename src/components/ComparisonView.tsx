@@ -238,7 +238,7 @@ export const ComparisonView = ({
 
       if (e.key.toLowerCase() === "a") {
         await handleSelection(currentPair.left);
-      } else if (e.key.toLowerCase() === "d") {
+      } else if (e.key.toLowerCase() === "b") {
         await handleSelection(currentPair.right);
       } else if (e.key.toLowerCase() === "s") {
         await handleTie();
@@ -648,7 +648,7 @@ export const ComparisonView = ({
         <div className="flex gap-8 items-start">
           <div className="flex-1 relative">
             {!imagesLoaded.left && (
-              <div className="absolute inset-0 z-10">
+              <div className="absolute inset-0 z-10 pointer-events-none">
                 <ImageCardSkeleton />
               </div>
             )}
@@ -657,14 +657,17 @@ export const ComparisonView = ({
               modelName={currentPair.left.model_name}
               side="left"
               isKing={false}
-              onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
+              onImageLoad={() => {
+                console.log('✅ LEFT image loaded, updating state');
+                setImagesLoaded(prev => ({ ...prev, left: true }));
+              }}
               blindMode={true}
             />
           </div>
 
           <div className="flex-1 relative">
             {!imagesLoaded.right && (
-              <div className="absolute inset-0 z-10">
+              <div className="absolute inset-0 z-10 pointer-events-none">
                 <ImageCardSkeleton />
               </div>
             )}
@@ -673,7 +676,10 @@ export const ComparisonView = ({
               modelName={currentPair.right.model_name}
               side="right"
               isKing={false}
-              onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
+              onImageLoad={() => {
+                console.log('✅ RIGHT image loaded, updating state');
+                setImagesLoaded(prev => ({ ...prev, right: true }));
+              }}
               blindMode={true}
             />
           </div>

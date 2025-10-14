@@ -1,16 +1,17 @@
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ImageCardSkeleton() {
   return (
-    <Card className="relative overflow-hidden glass-card">
-      <div className="aspect-square">
-        <Skeleton className="w-full h-full" />
+    <div className="flex flex-col gap-4">
+      <div className="glass rounded-2xl overflow-hidden relative">
+        <div className="aspect-square relative overflow-hidden">
+          <Skeleton className="w-full h-full" />
+        </div>
       </div>
-      <div className="p-4 space-y-2">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-1/2" />
+      <div className="text-center space-y-2">
+        <Skeleton className="h-6 w-24 mx-auto" />
+        <Skeleton className="h-4 w-32 mx-auto" />
       </div>
-    </Card>
+    </div>
   );
 }

@@ -12,10 +12,9 @@ interface ImageCardProps {
 
 export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blindMode = false }: ImageCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
 
   const handleImageLoad = () => {
-    setImageLoaded(true);
+    console.log(`🖼️ ${side === "left" ? "Left" : "Right"} image loaded`);
     onImageLoad?.();
   };
 
@@ -25,7 +24,7 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: side === "left" ? -100 : 100 }}
       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-      className="relative flex-1 flex flex-col gap-4"
+      className="relative flex flex-col gap-4"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -38,7 +37,7 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
             onLoad={handleImageLoad}
             animate={{
               scale: isHovered ? 1.1 : 1,
-              opacity: imageLoaded ? 1 : 0,
+              opacity: 1,
             }}
             transition={{ duration: 0.3 }}
           />
@@ -62,7 +61,7 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
           <>
             <p className="text-lg font-medium">{modelName}</p>
             <p className="text-sm text-muted-foreground">
-              Press {side === "left" ? "A" : "D"} to select
+              Press {side === "left" ? "A" : "B"} to select
             </p>
           </>
         )}
