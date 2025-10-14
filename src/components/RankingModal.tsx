@@ -262,9 +262,7 @@ export const RankingModal = ({
 
   // Sync state when winners prop changes (but only if it's NEW data and not submitted)
   useEffect(() => {
-    if (open && winners && winners.length >= 3 && !hasSubmitted && !isLoadingWinners) {
-      setIsLoadingWinners(true);
-      
+    if (open && winners && winners.length >= 3 && !hasSubmitted) {
       // Check if this is actually NEW data (different from what we have)
       const isDifferentData = JSON.stringify(winners.map(w => w.id)) !== 
                              JSON.stringify(initialWinners.map(w => w.id));
@@ -301,10 +299,8 @@ export const RankingModal = ({
         // Load quality metrics
         loadQualityMetrics();
       }
-      
-      setIsLoadingWinners(false);
     }
-  }, [open, winners, hasSubmitted, initialWinners, isLoadingWinners]);
+  }, [open, winners, hasSubmitted, initialWinners]);
 
   // Reset submission guard when modal closes
   useEffect(() => {
@@ -614,8 +610,8 @@ export const RankingModal = ({
         // Legacy confidence score (kept for backwards compatibility)
         confidence_score: metrics?.voteCertainty || 0,
         
-        // Track if user changed the order
-        user_modified_order: JSON.stringify(rankings.map(r => r.id)) !== JSON.stringify(winners.slice(0, 3).map(w => w.id)),
+        // Track if user changed the order (compare against initial winners, not current winners prop)
+        user_modified_order: JSON.stringify(rankings.map(r => r.id)) !== JSON.stringify(initialWinners.slice(0, 3).map(w => w.id)),
         
         // Track swapped images
         swapped_images_count: swappedImageIds.length,
