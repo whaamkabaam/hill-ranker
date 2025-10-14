@@ -3,6 +3,7 @@ import { ComparisonView } from "@/components/ComparisonView";
 import { RankingModal } from "@/components/RankingModal";
 import { PromptProgress } from "@/components/PromptProgress";
 import { ReviewRankings } from "@/components/ReviewRankings";
+import OnboardingTutorial from "@/components/OnboardingTutorial";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const ImageRanker = () => {
   const [winners, setWinners] = useState<ImageWithWins[]>([]);
   const [startTime, setStartTime] = useState(Date.now());
   const [activeTab, setActiveTab] = useState<string>("ranking");
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     loadPrompts();
@@ -172,6 +174,7 @@ const ImageRanker = () => {
 
   return (
     <>
+      <OnboardingTutorial onComplete={() => setShowOnboarding(false)} />
       <div className="fixed top-0 left-0 right-0 z-50 glass border-b">
         <div className="max-w-7xl mx-auto px-8 py-4">
           <div className="flex items-center justify-between mb-2">

@@ -6,10 +6,17 @@ interface ImageCardProps {
   modelName: string;
   side: "left" | "right";
   isKing?: boolean;
+  onImageLoad?: () => void;
 }
 
-export const ImageCard = ({ imageUrl, modelName, side, isKing }: ImageCardProps) => {
+export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad }: ImageCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    onImageLoad?.();
+  };
 
   return (
     <motion.div
@@ -27,8 +34,10 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing }: ImageCardProps)
             src={imageUrl}
             alt={`${modelName} generated image`}
             className="w-full h-full object-cover"
+            onLoad={handleImageLoad}
             animate={{
               scale: isHovered ? 1.1 : 1,
+              opacity: imageLoaded ? 1 : 0,
             }}
             transition={{ duration: 0.3 }}
           />

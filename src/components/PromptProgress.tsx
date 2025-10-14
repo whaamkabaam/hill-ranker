@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle2, Circle } from "lucide-react";
+import ProgressGamification from "./ProgressGamification";
 
 interface Prompt {
   id: string;
@@ -59,7 +59,7 @@ export const PromptProgress = ({ userId }: PromptProgressProps) => {
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   return (
-    <Card className="p-6 space-y-6">
+    <Card className="p-6 space-y-6 glass-card">
       <div>
         <h3 className="text-lg font-semibold mb-2">Overall Progress</h3>
         <p className="text-sm text-muted-foreground">
@@ -67,12 +67,11 @@ export const PromptProgress = ({ userId }: PromptProgressProps) => {
         </p>
       </div>
 
-      <div className="space-y-2">
-        <Progress value={progressPercent} className="h-3" />
-        <p className="text-xs text-muted-foreground text-right">
-          {progressPercent.toFixed(0)}% Complete
-        </p>
-      </div>
+      <ProgressGamification
+        completed={completedCount}
+        total={totalCount}
+        showConfetti={completedCount === totalCount}
+      />
 
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {prompts.map((prompt, idx) => {

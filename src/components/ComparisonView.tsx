@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { ImageCard } from "./ImageCard";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, RotateCcw, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import ImageCardSkeleton from "./ImageCardSkeleton";
+import ComparisonTips from "./ComparisonTips";
+import ProgressGamification from "./ProgressGamification";
 
 interface Image {
   id: string;
@@ -113,6 +115,7 @@ export const ComparisonView = ({
   const [voteHistory, setVoteHistory] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [imagesLoaded, setImagesLoaded] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
 
   const totalComparisons = allPairs.length;
   const currentPair = allPairs[currentPairIndex] || null;
@@ -534,9 +537,17 @@ export const ComparisonView = ({
     );
   }
 
+  // Reset images loaded state when pair changes
+  useEffect(() => {
+    setImagesLoaded({ left: false, right: false });
+  }, [currentPairIndex]);
+
   return (
     <div className="min-h-screen p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Comparison Tips */}
+        <ComparisonTips />
+
         {/* Header with Progress */}
         <div className="glass rounded-xl p-6 space-y-4">
           <div className="text-center">
@@ -544,16 +555,11 @@ export const ComparisonView = ({
             <h2 className="text-xl font-medium">{promptText}</h2>
           </div>
           
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Round-Robin Progress</span>
-              <span className="font-medium">{completedPairs.size} / {totalComparisons}</span>
-            </div>
-            <Progress value={(completedPairs.size / totalComparisons) * 100} />
-            <p className="text-xs text-muted-foreground text-center">
-              Every image compared against every other image
-            </p>
-          </div>
+          <ProgressGamification
+            completed={completedPairs.size}
+            total={totalComparisons}
+            showConfetti={completedPairs.size === totalComparisons}
+          />
 
           {/* Reset Button */}
           {completedPairs.size > 0 && (
@@ -586,18 +592,31 @@ export const ComparisonView = ({
 
         {/* Comparison */}
         <div className="flex gap-8 items-start">
-          <ImageCard
-            imageUrl={currentPair.left.image_url}
-            modelName={currentPair.left.model_name}
-            side="left"
-            isKing={false}
-          />
-          <ImageCard
-            imageUrl={currentPair.right.image_url}
-            modelName={currentPair.right.model_name}
-            side="right"
-            isKing={false}
-          />
+          {!imagesLoaded.left ? (
+            <ImageCardSkeleton />
+          ) : null}
+          <div className={!imagesLoaded.left ? 'hidden' : 'flex-1'}>
+            <ImageCard
+              imageUrl={currentPair.left.image_url}
+              modelName={currentPair.left.model_name}
+              side="left"
+              isKing={false}
+              onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
+            />
+          </div>
+
+          {!imagesLoaded.right ? (
+            <ImageCardSkeleton />
+          ) : null}
+          <div className={!imagesLoaded.right ? 'hidden' : 'flex-1'}>
+            <ImageCard
+              imageUrl={currentPair.right.image_url}
+              modelName={currentPair.right.model_name}
+              side="right"
+              isKing={false}
+              onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
+            />
+          </div>
         </div>
 
         {/* Controls */}
@@ -607,25 +626,31 @@ export const ComparisonView = ({
               onClick={() => handleSelection(currentPair.left)}
               variant="outline"
               size="lg"
-              className="glass-hover"
+              className="glass-hover gap-2"
+              disabled={!imagesLoaded.left || !imagesLoaded.right}
             >
-              A - Left Wins
+              <kbd className="px-2 py-1 bg-muted rounded text-xs">A</kbd>
+              Left Wins
             </Button>
             <Button
               onClick={handleTie}
               variant="outline"
               size="lg"
-              className="glass-hover"
+              className="glass-hover gap-2"
+              disabled={!imagesLoaded.left || !imagesLoaded.right}
             >
-              T - Tie
+              <kbd className="px-2 py-1 bg-muted rounded text-xs">T</kbd>
+              Tie
             </Button>
             <Button
               onClick={() => handleSelection(currentPair.right)}
               variant="outline"
               size="lg"
-              className="glass-hover"
+              className="glass-hover gap-2"
+              disabled={!imagesLoaded.left || !imagesLoaded.right}
             >
-              L - Right Wins
+              <kbd className="px-2 py-1 bg-muted rounded text-xs">L</kbd>
+              Right Wins
             </Button>
           </div>
           
@@ -655,6 +680,10 @@ export const ComparisonView = ({
               </Button>
             )}
           </div>
+
+          <p className="text-xs text-center text-muted-foreground">
+            💡 Tip: Use keyboard shortcuts for faster voting
+          </p>
         </div>
       </div>
     </div>
