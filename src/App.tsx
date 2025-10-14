@@ -11,6 +11,7 @@ import ImageRanker from "./pages/tools/ImageRanker";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import AdminPanel from "./pages/admin/AdminPanel";
+import Analytics from "./pages/admin/Analytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,11 @@ const App = () => (
             <Route path="/admin" element={
               <ProtectedRoute>
                 <AdminPanel />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/analytics" element={
+              <ProtectedRoute>
+                <Analytics />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
