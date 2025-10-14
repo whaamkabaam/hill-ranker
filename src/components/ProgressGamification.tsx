@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Trophy, Zap, Target, Award } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface ProgressGamificationProps {
@@ -53,30 +51,12 @@ export default function ProgressGamification({
     frame();
   };
 
-  const getMilestone = () => {
-    if (percentage === 100) return { icon: Trophy, text: 'Complete!', color: 'text-yellow-500' };
-    if (percentage >= 75) return { icon: Award, text: 'Almost there!', color: 'text-purple-500' };
-    if (percentage >= 50) return { icon: Target, text: 'Halfway!', color: 'text-blue-500' };
-    if (percentage >= 25) return { icon: Zap, text: 'Good start!', color: 'text-green-500' };
-    return null;
-  };
-
-  const milestone = getMilestone();
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">
-            {completed} / {total} comparisons
-          </span>
-          {milestone && (
-            <Badge variant="outline" className="gap-1">
-              <milestone.icon className={`h-3 w-3 ${milestone.color}`} />
-              <span className={milestone.color}>{milestone.text}</span>
-            </Badge>
-          )}
-        </div>
+        <span className="text-sm font-medium">
+          {completed} / {total} comparisons
+        </span>
         <span className="text-sm text-muted-foreground">{percentage.toFixed(0)}%</span>
       </div>
       

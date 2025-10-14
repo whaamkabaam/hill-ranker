@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, RotateCcw, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import ImageCardSkeleton from "./ImageCardSkeleton";
-import ComparisonTips from "./ComparisonTips";
+
 import ProgressGamification from "./ProgressGamification";
 
 interface Image {
@@ -251,8 +251,26 @@ export const ComparisonView = ({
 
   // Reset images loaded state when pair changes
   useEffect(() => {
+    console.log('🔄 Pair changed, resetting image loaded states');
     setImagesLoaded({ left: false, right: false });
   }, [currentPairIndex]);
+
+  // Check if images are already cached/loaded
+  useEffect(() => {
+    if (!currentPair) return;
+    
+    const checkImageLoaded = (url: string, side: 'left' | 'right') => {
+      const img = new Image();
+      img.src = url;
+      if (img.complete) {
+        console.log(`🚀 ${side.toUpperCase()} image already cached`);
+        setImagesLoaded(prev => ({ ...prev, [side]: true }));
+      }
+    };
+    
+    checkImageLoaded(currentPair.left.image_url, 'left');
+    checkImageLoaded(currentPair.right.image_url, 'right');
+  }, [currentPair]);
 
   const handleComparisonComplete = async () => {
     try {
@@ -584,23 +602,6 @@ export const ComparisonView = ({
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Comparison Tips */}
-        <ComparisonTips />
-
-        {/* Blind Mode Notice */}
-        <Card className="p-4 bg-primary/10 border-primary/30">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20">
-              🕶️
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-sm">Blind Testing Mode Active</p>
-              <p className="text-xs text-muted-foreground">
-                Model names are hidden to ensure unbiased voting. They'll be revealed after you complete all comparisons.
-              </p>
-            </div>
-          </div>
-        </Card>
 
         {/* Header with Progress */}
         <div className="glass rounded-xl p-6 space-y-4">
@@ -648,7 +649,7 @@ export const ComparisonView = ({
         <div className="flex gap-8 items-start">
           <div className="flex-1 relative">
             {!imagesLoaded.left && (
-              <div className="absolute inset-0 z-10 pointer-events-none">
+              <div key={`skeleton-left-${currentPairIndex}`} className="absolute inset-0 z-10 pointer-events-none">
                 <ImageCardSkeleton />
               </div>
             )}
@@ -659,7 +660,10 @@ export const ComparisonView = ({
               isKing={false}
               onImageLoad={() => {
                 console.log('✅ LEFT image loaded, updating state');
-                setImagesLoaded(prev => ({ ...prev, left: true }));
+                setImagesLoaded(prev => {
+                  console.log('Previous left state:', prev.left, '→ New state: true');
+                  return { ...prev, left: true };
+                });
               }}
               blindMode={true}
             />
@@ -667,7 +671,7 @@ export const ComparisonView = ({
 
           <div className="flex-1 relative">
             {!imagesLoaded.right && (
-              <div className="absolute inset-0 z-10 pointer-events-none">
+              <div key={`skeleton-right-${currentPairIndex}`} className="absolute inset-0 z-10 pointer-events-none">
                 <ImageCardSkeleton />
               </div>
             )}
@@ -678,7 +682,10 @@ export const ComparisonView = ({
               isKing={false}
               onImageLoad={() => {
                 console.log('✅ RIGHT image loaded, updating state');
-                setImagesLoaded(prev => ({ ...prev, right: true }));
+                setImagesLoaded(prev => {
+                  console.log('Previous right state:', prev.right, '→ New state: true');
+                  return { ...prev, right: true };
+                });
               }}
               blindMode={true}
             />
