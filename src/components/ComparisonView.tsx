@@ -224,7 +224,9 @@ export const ComparisonView = ({
   useEffect(() => {
     if (isLoading || allPairs.length === 0) return;
 
-    if (completedPairs.size >= allPairs.length) {
+    // Only trigger if we actually have all pairs completed AND have pairs to compare
+    if (completedPairs.size >= allPairs.length && allPairs.length > 0) {
+      console.log(`✅ Completion triggered: ${completedPairs.size}/${allPairs.length} pairs completed`);
       handleComparisonComplete();
     }
   }, [completedPairs, allPairs, isLoading]);
@@ -255,6 +257,13 @@ export const ComparisonView = ({
   const handleComparisonComplete = async () => {
     try {
       console.log('🏁 All comparisons complete, calculating Elo rankings...');
+      console.log('📊 Debug: allPairs.length =', allPairs.length, ', completedPairs.size =', completedPairs.size);
+      
+      // CRITICAL: Don't proceed if not all pairs are completed
+      if (completedPairs.size < allPairs.length) {
+        console.warn('⚠️ Not all pairs completed yet, aborting');
+        return;
+      }
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -268,53 +277,47 @@ export const ComparisonView = ({
         .eq('prompt_id', promptId)
         .eq('user_id', user.id);
 
-      console.log('📊 All votes fetched:', allVotes?.length || 0);
+      console.log('📊 All votes fetched:', allVotes?.length || 0, 'Expected:', allPairs.length);
 
-      if (allVotes && allVotes.length >= allPairs.length) {
-        // Validate all pairs completed
-        const votedPairs = new Set<string>();
-        allVotes.forEach(vote => {
-          votedPairs.add(`${vote.left_image_id}-${vote.right_image_id}`);
-        });
-
-        const missingPairs = allPairs.filter(p => !votedPairs.has(p.pairId));
-        if (missingPairs.length > 0) {
-          console.warn('⚠️ Missing pairs:', missingPairs.length);
-          toast.error(`Missing ${missingPairs.length} comparisons. Please complete all pairs.`);
-          return;
-        }
-
-        const rankedImages = calculateEloRatings(images, allVotes);
-        const top3 = rankedImages.slice(0, 3);
-        
-        console.log('🏆 Top 3 by Elo:', top3.map(img => ({ 
-          model: img.model_name, 
-          elo: img.elo, 
-          wins: img.wins 
-        })));
-
-        if (top3.length >= 3) {
-          // Update session as completed
-          if (sessionId) {
-            await supabase
-              .from('comparison_sessions')
-              .update({
-                completed_at: new Date().toISOString(),
-                completed_comparisons: allPairs.length,
-              })
-              .eq('id', sessionId);
-          }
-
-          console.log('✅ Calling onComplete with:', top3);
-          onComplete(top3);
-        } else {
-          console.error('❌ Not enough ranked images');
-          toast.error('Unable to generate rankings');
-        }
-      } else {
-        console.error('❌ Insufficient votes');
-        toast.error('Not all comparisons completed');
+      // CRITICAL: Validate vote count matches pair count
+      if (!allVotes || allVotes.length < allPairs.length) {
+        console.error('❌ Insufficient votes:', allVotes?.length, 'expected:', allPairs.length);
+        toast.error(`Only ${allVotes?.length || 0} of ${allPairs.length} comparisons completed`);
+        return;
       }
+
+      // Calculate rankings
+      const rankedImages = calculateEloRatings(images, allVotes);
+      console.log('📊 Ranked images:', rankedImages.length);
+      
+      // CRITICAL: Ensure we have at least 3 images to rank
+      if (rankedImages.length < 3) {
+        console.error('❌ Not enough images to rank:', rankedImages.length);
+        toast.error(`Only ${rankedImages.length} images available, need at least 3`);
+        return;
+      }
+      
+      const top3 = rankedImages.slice(0, 3);
+      
+      console.log('🏆 Top 3 by Elo:', top3.map(img => ({ 
+        model: img.model_name, 
+        elo: img.elo, 
+        wins: img.wins 
+      })));
+
+      // Update session as completed
+      if (sessionId) {
+        await supabase
+          .from('comparison_sessions')
+          .update({
+            completed_at: new Date().toISOString(),
+            completed_comparisons: allPairs.length,
+          })
+          .eq('id', sessionId);
+      }
+
+      console.log('✅ Calling onComplete with top3:', top3.length, 'images');
+      onComplete(top3);
     } catch (error) {
       console.error("❌ Error completing comparison:", error);
       toast.error("Failed to calculate rankings");
@@ -331,6 +334,12 @@ export const ComparisonView = ({
         return;
       }
 
+      console.log('🗳️ Recording vote:', {
+        pair: currentPair.pairId,
+        winner: winner.model_name,
+        progress: `${completedPairs.size + 1}/${allPairs.length}`
+      });
+
       const { data, error } = await supabase.from("votes").insert({
         prompt_id: promptId,
         user_email: userEmail,
@@ -343,8 +352,13 @@ export const ComparisonView = ({
 
       if (error) throw error;
 
+      // Update state AFTER successful database insert
       setVoteHistory(prev => [...prev, data.id]);
-      setCompletedPairs(prev => new Set([...prev, currentPair.pairId]));
+      setCompletedPairs(prev => {
+        const newSet = new Set([...prev, currentPair.pairId]);
+        console.log('📊 Updated completed pairs:', newSet.size, '/', allPairs.length);
+        return newSet;
+      });
 
       // Update session progress
       if (sessionId) {
@@ -408,17 +422,23 @@ export const ComparisonView = ({
   };
 
   const moveToNextPair = () => {
+    console.log('🔄 Moving to next pair. Current:', currentPairIndex, 'Completed:', completedPairs.size, 'Total:', allPairs.length);
+    
     const nextIndex = allPairs.findIndex((p, idx) => 
       idx > currentPairIndex && !completedPairs.has(p.pairId)
     );
 
     if (nextIndex !== -1) {
+      console.log('✅ Found next pair at index:', nextIndex);
       setCurrentPairIndex(nextIndex);
     } else {
       // Check from beginning for any missed pairs
       const firstIncomplete = allPairs.findIndex(p => !completedPairs.has(p.pairId));
       if (firstIncomplete !== -1) {
+        console.log('✅ Found incomplete pair at index:', firstIncomplete);
         setCurrentPairIndex(firstIncomplete);
+      } else {
+        console.log('🏁 No more pairs to compare');
       }
     }
   };
