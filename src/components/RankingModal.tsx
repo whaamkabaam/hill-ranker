@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { motion } from "framer-motion";
@@ -164,6 +164,7 @@ export const RankingModal = ({
     };
   });
   const [submitting, setSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [qualityMetrics, setQualityMetrics] = useState<{
     consistencyScore: number;
     transitivityViolations: number;
@@ -329,8 +330,10 @@ export const RankingModal = ({
 
       console.log('💾 Saving ranking with metrics:', rankingData);
 
-      // Save ranking
-      await supabase.from("rankings").insert(rankingData);
+      // Save ranking (upsert to handle duplicate submissions)
+      await supabase.from("rankings").upsert(rankingData, {
+        onConflict: 'prompt_id,user_email'
+      });
 
       // Mark prompt as completed
       await supabase.from("prompt_completions").upsert({
@@ -352,10 +355,19 @@ export const RankingModal = ({
         .eq('prompt_id', promptId);
 
       toast.success("Rankings saved successfully!");
+      setHasSubmitted(true);
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving rankings:", error);
-      toast.error("Failed to save rankings");
+      
+      // Handle duplicate submission gracefully
+      if (error?.code === '409' || error?.code === '23505' || error?.message?.includes('duplicate')) {
+        toast.success("Rankings already saved!");
+        setHasSubmitted(true);
+        onComplete();
+      } else {
+        toast.error("Failed to save rankings");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -366,12 +378,14 @@ export const RankingModal = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto glass">
         <DialogHeader>
           <DialogTitle className="text-2xl">🎉 Ranking Complete - Models Revealed!</DialogTitle>
-          <p className="text-sm text-muted-foreground mt-2">
-            These were the top 3 based on your blind votes, adjusted for direct head-to-head results. When two images competed directly, the winner is ranked higher. Drag to reorder if you'd like to adjust.
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Rankings are based on your head-to-head comparisons. When circular preferences exist (e.g., A beats B, B beats C, C beats A), Elo scores are used as a tiebreaker within that group.
-          </p>
+          <DialogDescription className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              These were the top 3 based on your blind votes, adjusted for direct head-to-head results. When two images competed directly, the winner is ranked higher. Drag to reorder if you'd like to adjust.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Rankings are based on your head-to-head comparisons. When circular preferences exist (e.g., A beats B, B beats C, C beats A), Elo scores are used as a tiebreaker within that group.
+            </p>
+          </DialogDescription>
         </DialogHeader>
 
         <DndContext

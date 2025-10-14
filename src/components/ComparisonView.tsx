@@ -548,39 +548,23 @@ export const ComparisonView = ({
         setAnimationState('idle');
         setPendingVote(false);
       } else {
-        // Challenger wins: 4-phase animation
-        console.log('🎬 Animation Phase 1: Exit animation (right-wins) - 600ms');
-        // Exit animation already triggered by setAnimationState('right-wins') at line 369
-        // Already waited 600ms at line 396
+        // Challenger wins: Simplified animation
+        console.log('🎬 Right wins: Exit animation (600ms)');
+        // Exit animation already triggered by setAnimationState('right-wins')
+        // Already waited 600ms
         
-        // PHASE 2: Clear right side and update champion
-        console.log('🎬 Animation Phase 2: Clearing right side');
-        setAnimationState('clearing-right');
-        
-        // Small delay to ensure React processes the state change
-        await new Promise(resolve => setTimeout(resolve, 16)); // 1 frame
-        
-        // Now update the champion (left side gets the old challenger)
-        console.log('🎬 Animation Phase 3: Promoting challenger to champion');
+        // Update champion immediately (old challenger becomes new champion on left)
         setChampion(challenger);
         
         if (remainingImages.length > 0) {
-          // PHASE 3: Prepare new challenger entry
-          console.log('🎬 Animation Phase 4: Preparing new challenger');
-          setAnimationState('entering-challenger');
-          
-          // Small delay to ensure DOM updates with new champion
-          await new Promise(resolve => setTimeout(resolve, 16)); // 1 frame
-          
-          // Set new challenger (will be positioned off-screen)
+          // Mount new challenger
           setChallenger(remainingImages[0]);
           setRemainingImages(prev => prev.slice(1));
           
           // Small delay to ensure new image is mounted
           await new Promise(resolve => setTimeout(resolve, 50));
           
-          // PHASE 4: Trigger enter animation
-          console.log('🎬 Animation Phase 5: Enter animation (idle) - 500ms');
+          // Trigger enter animation
           setAnimationState('idle');
           
           // Wait for enter animation to complete
@@ -840,14 +824,9 @@ export const ComparisonView = ({
 
           {/* Challenger (Right Side) */}
           <div 
-            className={`flex-1 ${
-              animationState === 'clearing-right' ? 'transition-opacity duration-300' :
-              'transition-all duration-500 ease-out'
-            } ${
+            className={`flex-1 transition-all duration-500 ease-out ${
               animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
-              animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' :
-              animationState === 'clearing-right' ? '-translate-x-[calc(100%+2rem)] opacity-0' :
-              animationState === 'entering-challenger' ? 'translate-x-[120%] opacity-0' :
+              animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)] opacity-0' :
               'translate-x-0 opacity-100'
             }`}
           >
