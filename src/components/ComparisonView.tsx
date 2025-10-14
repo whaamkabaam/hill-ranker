@@ -240,6 +240,7 @@ export const ComparisonView = ({
   const [totalComparisons, setTotalComparisons] = useState(0);
   const [animationState, setAnimationState] = useState<AnimationState>('idle');
   const [newChallengerMounting, setNewChallengerMounting] = useState(false);
+  const [championTransitioning, setChampionTransitioning] = useState(false);
   
   // Session state
   const [isLoading, setIsLoading] = useState(true);
@@ -574,6 +575,9 @@ export const ComparisonView = ({
         // Exit animation already triggered by setAnimationState('right-wins')
         // Already waited 600ms
         
+        // Signal that champion is transitioning (prevent left side animation reset)
+        setChampionTransitioning(true);
+        
         // Update champion immediately (old challenger becomes new champion on left)
         const oldChampionId = champion.id;
         setChampion(challenger);
@@ -604,6 +608,7 @@ export const ComparisonView = ({
           // Trigger enter animation
           setAnimationState('idle');
           setNewChallengerMounting(false);
+          setChampionTransitioning(false); // Now left side can animate normally again
           setPendingVote(false); // Unlock immediately when state is ready
           
           // Wait for enter animation to complete
@@ -612,6 +617,7 @@ export const ComparisonView = ({
           // No more challengers - tournament complete
           setChallenger(null);
           setAnimationState('idle');
+          setChampionTransitioning(false);
           setPendingVote(false);
         }
       }
@@ -838,7 +844,10 @@ export const ComparisonView = ({
         <div className="flex gap-8 items-start relative overflow-hidden">
           {/* Champion (Left Side) */}
           <div 
-            className={`flex-1 transition-all duration-500 ease-out ${
+            className={`flex-1 ${
+              championTransitioning ? '' : 'transition-all duration-500 ease-out'
+            } ${
+              championTransitioning ? 'translate-x-0 opacity-100' :
               animationState === 'right-wins' ? '-translate-x-[120%] opacity-0' : 
               animationState === 'clearing-right' ? '-translate-x-[120%] opacity-0' :
               animationState === 'entering-challenger' ? 'translate-x-0 opacity-100' :
@@ -863,6 +872,7 @@ export const ComparisonView = ({
           {/* Challenger (Right Side) */}
           <div 
             className={`flex-1 transition-all duration-500 ease-out ${
+              championTransitioning ? 'opacity-0 pointer-events-none' :
               animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
               animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' :
               newChallengerMounting ? 'translate-x-[120%]' :
