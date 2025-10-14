@@ -28,7 +28,7 @@ interface ComparisonViewProps {
   onSkip?: () => void;
 }
 
-type AnimationState = 'idle' | 'left-wins' | 'right-wins';
+type AnimationState = 'idle' | 'left-wins' | 'right-wins' | 'entering-challenger';
 
 // Utility: Calculate Elo ratings from votes
 const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => {
@@ -344,19 +344,34 @@ export const ComparisonView = ({
           // No more challengers - tournament complete
           setChallenger(null);
         }
+        
+        // Reset animation
+        setAnimationState('idle');
       } else {
         // Challenger wins: becomes new champion
         setChampion(challenger);
+        
         if (remainingImages.length > 0) {
+          // Set animation to "entering" state BEFORE setting new challenger
+          setAnimationState('entering-challenger');
+          
+          // Small delay to ensure DOM updates
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
+          // Now set the new challenger
           setChallenger(remainingImages[0]);
           setRemainingImages(prev => prev.slice(1));
+          
+          // Wait for enter animation
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Reset to idle
+          setAnimationState('idle');
         } else {
           setChallenger(null);
+          setAnimationState('idle');
         }
       }
-
-      // Reset animation
-      setAnimationState('idle');
     } catch (error) {
       console.error("Error saving vote:", error);
       toast.error("Failed to save vote");
@@ -579,6 +594,7 @@ export const ComparisonView = ({
             className={`flex-1 transition-all duration-500 ease-out ${
               animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' : 
               animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' : 
+              animationState === 'entering-challenger' ? 'translate-x-[120%] opacity-0' :
               'translate-x-0 opacity-100'
             }`}
           >
