@@ -164,14 +164,14 @@ export const ReviewRankings = ({ userId }: ReviewRankingsProps) => {
             </div>
 
             {/* Rankings Display */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-6">
               {[
-                { image: first, rating: ranking.rating_first, place: 1 },
-                { image: second, rating: ranking.rating_second, place: 2 },
-                { image: third, rating: ranking.rating_third, place: 3 },
-              ].map(({ image, rating, place }) => (
+                { image: first, rating: ranking.rating_first, place: 1, emoji: "🥇", borderColor: "border-yellow-400", badgeClass: "bg-gradient-to-br from-yellow-400 to-yellow-600 text-white border-0" },
+                { image: second, rating: ranking.rating_second, place: 2, emoji: "🥈", borderColor: "border-gray-400", badgeClass: "bg-gradient-to-br from-gray-300 to-gray-500 text-white border-0" },
+                { image: third, rating: ranking.rating_third, place: 3, emoji: "🥉", borderColor: "border-orange-400", badgeClass: "bg-gradient-to-br from-orange-400 to-orange-600 text-white border-0" },
+              ].map(({ image, rating, place, emoji, borderColor, badgeClass }) => (
                 <div key={place} className="space-y-2">
-                  <div className="relative aspect-square rounded-lg overflow-hidden bg-secondary">
+                  <div className={`relative aspect-square rounded-lg overflow-hidden bg-secondary border-4 ${borderColor} transition-transform hover:scale-105`}>
                     {image && (
                       <img
                         src={image.image_url}
@@ -179,20 +179,26 @@ export const ReviewRankings = ({ userId }: ReviewRankingsProps) => {
                         className="w-full h-full object-cover"
                       />
                     )}
-                    <div className="absolute top-2 left-2">
-                      <Badge className="bg-background/80 backdrop-blur-sm">
-                        {place === 1 && <Award className="w-3 h-3 mr-1 text-yellow-500" />}
-                        {place === 2 && <Award className="w-3 h-3 mr-1 text-gray-400" />}
-                        {place === 3 && <Award className="w-3 h-3 mr-1 text-orange-600" />}
+                    {/* Top-right badge */}
+                    <div className="absolute top-2 right-2">
+                      <Badge className={`${badgeClass} shadow-lg px-3 py-1`}>
+                        <Award className="w-5 h-5 mr-1" />
                         #{place}
                       </Badge>
                     </div>
+                    {/* Large rank number overlay */}
+                    <div className="absolute bottom-2 right-2 text-6xl font-bold text-white/20 select-none">
+                      {place}
+                    </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">{image?.model_name || "Unknown"}</p>
+                    <p className="text-sm font-medium flex items-center gap-1">
+                      <span className="text-lg">{emoji}</span>
+                      {image?.model_name || "Unknown"}
+                    </p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <TrendingUp className="w-3 h-3" />
-                      Realism: {rating}/10
+                      <span className="font-semibold text-foreground">Realism: {rating}/10</span>
                     </div>
                   </div>
                 </div>

@@ -46,6 +46,8 @@ const ImageRanker = () => {
   const [isPromptInProgress, setIsPromptInProgress] = useState(true);
   // Track if all prompts are completed
   const [allPromptsCompleted, setAllPromptsCompleted] = useState(false);
+  // Track if user has voted at least once (for leaderboard access)
+  const [hasUserVoted, setHasUserVoted] = useState(false);
 
   useEffect(() => {
     loadPrompts();
@@ -59,7 +61,31 @@ const ImageRanker = () => {
 
   useEffect(() => {
     checkAllPromptsCompleted();
+    checkUserParticipation();
   }, [prompts, user?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'progress') {
+      checkUserParticipation();
+    }
+  }, [activeTab]);
+
+  const checkUserParticipation = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('rankings')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+      
+      if (error) throw error;
+      setHasUserVoted(data && data.length > 0);
+    } catch (error) {
+      console.error('Error checking user participation:', error);
+    }
+  };
 
   const checkAllPromptsCompleted = async () => {
     if (!user?.id || prompts.length === 0) return;
@@ -202,6 +228,14 @@ const ImageRanker = () => {
     setShowRanking(false);
     setWinners([]); // PHASE 1: Clear winners immediately
     setIsPromptInProgress(true); // PHASE 3: Ready for next prompt
+    
+    // Check if this was user's first vote
+    const wasFirstVote = !hasUserVoted;
+    await checkUserParticipation();
+    
+    if (wasFirstVote && hasUserVoted) {
+      toast.success("🎉 Leaderboard unlocked! Check the Progress tab.");
+    }
     
     // Check for next uncompleted prompt
     try {
@@ -363,7 +397,31 @@ const ImageRanker = () => {
             </TabsContent>
 
             <TabsContent value="progress">
-              <GlobalLeaderboard />
+              {!hasUserVoted ? (
+                <div className="flex flex-col items-center justify-center min-h-[500px] gap-6 p-8">
+                  <div className="text-center space-y-4 max-w-md">
+                    <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                      <BarChart3 className="w-10 h-10 text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-bold">🔒 Leaderboard Locked</h2>
+                    <p className="text-muted-foreground">
+                      Complete at least one image ranking to unlock the global leaderboard!
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Your contribution helps us build the best AI image quality data.
+                    </p>
+                    <Button 
+                      onClick={() => setActiveTab('ranking')}
+                      className="mt-4"
+                      size="lg"
+                    >
+                      Start Ranking Images →
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <GlobalLeaderboard />
+              )}
             </TabsContent>
 
             <TabsContent value="history">
