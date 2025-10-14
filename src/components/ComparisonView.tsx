@@ -79,6 +79,58 @@ const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => 
     .sort((a, b) => (b.elo || 0) - (a.elo || 0));
 };
 
+// Utility: Resolve transitivity violations using head-to-head results
+const resolveTransitivityViolations = (
+  rankedImages: ImageWithWins[],
+  votes: any[]
+): ImageWithWins[] => {
+  // Build head-to-head record
+  const h2h: Record<string, Record<string, number>> = {};
+  
+  votes.forEach(vote => {
+    if (vote.is_tie) return;
+    
+    const winner = vote.winner_id;
+    const loser = vote.winner_id === vote.left_image_id 
+      ? vote.right_image_id 
+      : vote.left_image_id;
+    
+    if (!h2h[winner]) h2h[winner] = {};
+    h2h[winner][loser] = (h2h[winner][loser] || 0) + 1;
+  });
+  
+  // Resolve violations (bubble sort with h2h check)
+  let resolved = [...rankedImages];
+  let swapped = true;
+  let swapCount = 0;
+  
+  while (swapped) {
+    swapped = false;
+    for (let i = 0; i < resolved.length - 1; i++) {
+      const higher = resolved[i];
+      const lower = resolved[i + 1];
+      
+      // Check if lower beat higher directly
+      const lowerBeatsHigher = (h2h[lower.id]?.[higher.id] || 0) > 
+                                (h2h[higher.id]?.[lower.id] || 0);
+      
+      if (lowerBeatsHigher) {
+        // Swap them
+        [resolved[i], resolved[i + 1]] = [resolved[i + 1], resolved[i]];
+        swapped = true;
+        swapCount++;
+        console.log(`🔄 Swapped ${higher.model_name} with ${lower.model_name} due to direct head-to-head result`);
+      }
+    }
+  }
+  
+  if (swapCount > 0) {
+    console.log(`✅ Resolved ${swapCount} transitivity violation(s) using head-to-head results`);
+  }
+  
+  return resolved;
+};
+
 export const ComparisonView = ({
   promptId,
   promptText,
@@ -259,7 +311,16 @@ export const ComparisonView = ({
       }
 
       // Calculate final rankings from all votes
-      const rankedImages = calculateEloRatings(images, allVotes);
+      let rankedImages = calculateEloRatings(images, allVotes);
+      
+      console.log('📊 Elo rankings:', rankedImages.map(img => ({ 
+        model: img.model_name, 
+        elo: img.elo, 
+        wins: img.wins 
+      })));
+      
+      // Resolve transitivity violations using head-to-head results
+      rankedImages = resolveTransitivityViolations(rankedImages, allVotes);
       
       if (rankedImages.length < 3) {
         toast.error(`Only ${rankedImages.length} images available, need at least 3`);
@@ -268,7 +329,7 @@ export const ComparisonView = ({
       
       const top3 = rankedImages.slice(0, 3);
       
-      console.log('🏆 Top 3:', top3.map(img => ({ 
+      console.log('🏆 Final Top 3 (after h2h resolution):', top3.map(img => ({ 
         model: img.model_name, 
         elo: img.elo, 
         wins: img.wins 

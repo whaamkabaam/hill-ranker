@@ -361,7 +361,7 @@ export const RankingModal = ({
         <DialogHeader>
           <DialogTitle className="text-2xl">🎉 Ranking Complete - Models Revealed!</DialogTitle>
           <p className="text-sm text-muted-foreground mt-2">
-            These were the top 3 based on your blind votes. Now you can see which models you preferred. Drag to reorder if you'd like to adjust.
+            These were the top 3 based on your blind votes, adjusted for direct head-to-head results. When two images competed directly, the winner is ranked higher. Drag to reorder if you'd like to adjust.
           </p>
         </DialogHeader>
 
