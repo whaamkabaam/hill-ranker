@@ -380,6 +380,9 @@ export const ComparisonView = ({
   // Guard flag to prevent infinite loop
   const [isCompletingTournament, setIsCompletingTournament] = useState(false);
   
+  // Persistent flag to track if tournament has completed (prevents infinite loop after modal closes)
+  const [hasTournamentCompleted, setHasTournamentCompleted] = useState(false);
+  
   const estimatedTotal = Math.ceil(images.length * 2.5);
   
   // Helper: Disambiguate duplicate model names by adding suffixes
@@ -408,6 +411,9 @@ export const ComparisonView = ({
   // Initialize King-of-the-Hill tournament
   useEffect(() => {
     const initialize = async () => {
+      // Reset tournament completion flag when initializing a new prompt
+      setHasTournamentCompleted(false);
+      
       if (images.length < 2) {
         toast.error(`Need at least 2 images to compare (found ${images.length})`);
         setIsLoading(false);
@@ -541,17 +547,17 @@ export const ComparisonView = ({
 
   // Check for tournament completion
   useEffect(() => {
-    if (isLoading || !champion || isTournamentCompleting) return;
+    if (isLoading || !champion || isTournamentCompleting || hasTournamentCompleted) return;
 
     // Tournament complete when no more challengers
     if (!challenger && remainingImages.length === 0 && totalComparisons > 0) {
       console.log('🏆 Tournament complete! Champion:', champion.model_name);
       setIsTournamentCompleting(true);
       handleTournamentComplete().finally(() => {
-        setTimeout(() => setIsTournamentCompleting(false), 1000);
+        setIsTournamentCompleting(false);
       });
     }
-  }, [challenger, remainingImages, isLoading, champion, totalComparisons, isTournamentCompleting]);
+  }, [challenger, remainingImages, isLoading, champion, totalComparisons, isTournamentCompleting, hasTournamentCompleted]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -627,6 +633,7 @@ export const ComparisonView = ({
     }
     
     setIsCompletingTournament(true);
+    setHasTournamentCompleted(true);
     
     try {
       console.log('🏆 Tournament complete! Calculating final rankings...');
