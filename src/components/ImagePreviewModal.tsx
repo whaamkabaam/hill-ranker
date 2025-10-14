@@ -1,6 +1,6 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect } from "react";
 
 interface ImagePreviewModalProps {
@@ -22,31 +22,21 @@ export const ImagePreviewModal = ({
   currentIndex,
   onNavigate,
 }: ImagePreviewModalProps) => {
-  // Keyboard shortcuts - use capture phase to intercept before parent dialogs
+  // Keyboard shortcuts
   useEffect(() => {
     if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle our specific keys
-      if (e.key === "Escape" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        // Prevent default and stop propagation to avoid triggering other handlers
+      if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        
-        if (e.key === "Escape") {
-          onOpenChange(false);
-        } else if (e.key === "ArrowLeft" && onNavigate && currentIndex !== undefined && currentIndex > 0) {
-          onNavigate('prev');
-        } else if (e.key === "ArrowRight" && onNavigate && allImages && currentIndex !== undefined && currentIndex < allImages.length - 1) {
-          onNavigate('next');
-        }
+        onOpenChange(false);
       }
     };
 
-    // Use capture phase (true) to intercept events before they reach parent dialogs
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [open, onNavigate, currentIndex, allImages, onOpenChange]);
+  }, [open, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,40 +53,6 @@ export const ImagePreviewModal = ({
         >
           <X className="w-6 h-6" />
         </Button>
-
-        {/* Navigation buttons */}
-        {onNavigate && allImages && currentIndex !== undefined && (
-          <>
-            {currentIndex > 0 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-50 text-white hover:bg-white/20 pointer-events-auto"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNavigate('prev');
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <ChevronLeft className="w-8 h-8" />
-              </Button>
-            )}
-            {currentIndex < allImages.length - 1 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-50 text-white hover:bg-white/20 pointer-events-auto"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNavigate('next');
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <ChevronRight className="w-8 h-8" />
-              </Button>
-            )}
-          </>
-        )}
 
         {/* Image */}
         <div className="flex items-center justify-center p-8 min-h-[80vh]">
