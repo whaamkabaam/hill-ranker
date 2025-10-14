@@ -66,25 +66,27 @@ const ProfileImageManager = () => {
     // Remove extension
     const nameWithoutExt = filename.replace(/\.(jpg|jpeg|png|webp)$/i, '');
     
-    // Split by underscore
-    const parts = nameWithoutExt.split('_');
+    // Split by BOTH spaces AND underscores (and any multiple combinations)
+    const parts = nameWithoutExt.split(/[\s_]+/);
     
     // Normalize each part: remove hyphens and handle special characters
-    const processedParts = parts.map(part => 
-      part.toLowerCase()
-        // Remove hyphens and special punctuation
-        .replace(/[-]/g, '')
-        // Normalize accented characters (decompose then remove diacritics)
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        // Additional explicit replacements for safety
-        .replace(/ö/g, 'o')
-        .replace(/ü/g, 'u')
-        .replace(/ä/g, 'a')
-        .replace(/ë/g, 'e')
-        .replace(/ï/g, 'i')
-        .replace(/ø/g, 'o')
-    );
+    const processedParts = parts
+      .map(part => 
+        part.toLowerCase()
+          // Remove hyphens and special punctuation
+          .replace(/[-]/g, '')
+          // Normalize accented characters (decompose then remove diacritics)
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          // Additional explicit replacements for safety
+          .replace(/ö/g, 'o')
+          .replace(/ü/g, 'u')
+          .replace(/ä/g, 'a')
+          .replace(/ë/g, 'e')
+          .replace(/ï/g, 'i')
+          .replace(/ø/g, 'o')
+      )
+      .filter(part => part.length > 0); // Remove any empty parts
     
     // Join with dot and append domain
     return `${processedParts.join('.')}@hvcapital.com`;

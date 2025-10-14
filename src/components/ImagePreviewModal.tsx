@@ -22,31 +22,38 @@ export const ImagePreviewModal = ({
   currentIndex,
   onNavigate,
 }: ImagePreviewModalProps) => {
-  // Keyboard shortcuts
+  // Keyboard shortcuts - use capture phase to intercept before parent dialogs
   useEffect(() => {
     if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent default and stop propagation to avoid triggering other handlers
-      e.preventDefault();
-      e.stopPropagation();
-      
-      if (e.key === "Escape") {
-        onOpenChange(false);
-      } else if (e.key === "ArrowLeft" && onNavigate && currentIndex !== undefined && currentIndex > 0) {
-        onNavigate('prev');
-      } else if (e.key === "ArrowRight" && onNavigate && allImages && currentIndex !== undefined && currentIndex < allImages.length - 1) {
-        onNavigate('next');
+      // Only handle our specific keys
+      if (e.key === "Escape" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        // Prevent default and stop propagation to avoid triggering other handlers
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (e.key === "Escape") {
+          onOpenChange(false);
+        } else if (e.key === "ArrowLeft" && onNavigate && currentIndex !== undefined && currentIndex > 0) {
+          onNavigate('prev');
+        } else if (e.key === "ArrowRight" && onNavigate && allImages && currentIndex !== undefined && currentIndex < allImages.length - 1) {
+          onNavigate('next');
+        }
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Use capture phase (true) to intercept events before they reach parent dialogs
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [open, onNavigate, currentIndex, allImages, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none">
+      <DialogContent 
+        className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none" 
+        style={{ zIndex: 9999 }}
+      >
         {/* Close button */}
         <Button
           variant="ghost"
@@ -64,8 +71,12 @@ export const ImagePreviewModal = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-50 text-white hover:bg-white/20"
-                onClick={() => onNavigate('prev')}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-50 text-white hover:bg-white/20 pointer-events-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate('prev');
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
               >
                 <ChevronLeft className="w-8 h-8" />
               </Button>
@@ -74,8 +85,12 @@ export const ImagePreviewModal = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-50 text-white hover:bg-white/20"
-                onClick={() => onNavigate('next')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-50 text-white hover:bg-white/20 pointer-events-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate('next');
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
               >
                 <ChevronRight className="w-8 h-8" />
               </Button>
