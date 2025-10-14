@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -57,9 +57,10 @@ interface SortableImageProps {
   rankingReason?: string;
   availableImages: ImageWithWins[];
   onReplace: (imageToSwap: ImageWithWins) => void;
+  isSwapped?: boolean;
 }
 
-const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReason, availableImages, onReplace }: SortableImageProps) => {
+const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReason, availableImages, onReplace, isSwapped }: SortableImageProps) => {
   const {
     attributes,
     listeners,
@@ -88,7 +89,7 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
       style={style}
       className={`relative rounded-lg border-2 bg-gradient-to-br ${rankColors[rank]} p-3 ${
         isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"
-      }`}
+      } ${isSwapped ? "ring-2 ring-primary ring-offset-2" : ""}`}
     >
       {/* Drag handle - centered at top */}
       <div
@@ -129,7 +130,7 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
         )}
       </div>
 
-      {/* Replace button - Filter swappable images within component */}
+      {/* Replace button */}
       <div className="mb-3">
         <Popover>
           <PopoverTrigger asChild>
@@ -146,8 +147,8 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
             <div className="space-y-2">
               <p className="text-sm font-medium">Replace with:</p>
               <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
-                {availableImages.filter(img => img.id !== image.id).length > 0 ? (
-                  availableImages.filter(img => img.id !== image.id).map((img) => (
+                {availableImages.length > 0 ? (
+                  availableImages.map((img) => (
                     <button
                       key={img.id}
                       onClick={() => onReplace(img)}
@@ -218,7 +219,6 @@ export const RankingModal = ({
     winners && winners.length >= 3 ? winners.slice(0, 3) : []
   );
   const [rankingReasons, setRankingReasons] = useState<Record<string, string>>({});
-  const [availableImages, setAvailableImages] = useState<ImageWithWins[]>([]);
   const [showAllImages, setShowAllImages] = useState(false);
   const [showH2HStats, setShowH2HStats] = useState(false);
   const [swappedImageIds, setSwappedImageIds] = useState<string[]>([]);
@@ -239,12 +239,17 @@ export const RankingModal = ({
     qualityFlags: string[];
   } | null>(null);
 
+  // Compute available images (exclude current top 3) - PHASE 1
+  const computedAvailableImages = useMemo(() => {
+    const rankingIds = new Set(rankings.map(r => r.id));
+    return initialWinners.filter(img => !rankingIds.has(img.id));
+  }, [rankings, initialWinners]);
+
   // Fallback recovery: if modal is open but rankings are empty, recover from initialWinners
   useEffect(() => {
     if (open && rankings.length === 0 && initialWinners.length >= 3) {
       console.log('🔄 Recovering rankings from initialWinners');
       setRankings(initialWinners.slice(0, 3));
-      setAvailableImages(initialWinners);
       
       console.log('🎯 [Recovery] Available images for swapping:', initialWinners.length);
       
@@ -267,7 +272,6 @@ export const RankingModal = ({
         console.log('✅ Syncing rankings state with NEW winners:', winners);
         setInitialWinners(winners);
         setRankings(winners.slice(0, 3));
-        setAvailableImages(winners); // Pass ALL images for swapping
         
         console.log('🎯 Available images for swapping:', winners.length, winners.map(a => a.model_name));
         console.log('🎯 Top 3 rankings:', winners.slice(0, 3).map((w, i) => `${i + 1}. ${w.model_name} (${w.wins}W, Elo: ${w.elo || 'N/A'}, inCycle: ${w.inCycle}, H2H: ${JSON.stringify(w.h2hRelationships || {})})`));
@@ -295,11 +299,12 @@ export const RankingModal = ({
     }
   }, [open]);
 
-  // Generate ranking reasons based on H2H data
-  const generateRankingReasons = (allWinners: ImageWithWins[]): Record<string, string> => {
+  // Generate ranking reasons based on H2H data - PHASE 2: Updated to support custom top 3
+  const generateRankingReasons = (allWinners: ImageWithWins[], customTop3?: ImageWithWins[]): Record<string, string> => {
     const reasons: Record<string, string> = {};
+    const top3 = customTop3 || allWinners.slice(0, 3);
     
-    allWinners.slice(0, 3).forEach((winner, idx) => {
+    top3.forEach((winner, idx) => {
       if (idx === 0) {
         // Champion - check if beat both below
         if (winner.h2hRelationships) {
@@ -318,7 +323,7 @@ export const RankingModal = ({
         }
       } else {
         // 2nd and 3rd - show relationship to above
-        const aboveWinner = allWinners[idx - 1];
+        const aboveWinner = top3[idx - 1];
         const h2h = winner.h2hRelationships?.[aboveWinner.id];
         
         if (h2h && h2h.wins > h2h.losses) {
@@ -334,6 +339,65 @@ export const RankingModal = ({
     });
     
     return reasons;
+  };
+
+  // PHASE 3: Recalculate H2H relationships for top 3 after a swap
+  const recalculateH2HForTop3 = async (newTop3: ImageWithWins[]): Promise<ImageWithWins[]> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return newTop3;
+
+      // Fetch all votes for this prompt
+      const { data: votes } = await supabase
+        .from('votes')
+        .select('*')
+        .eq('prompt_id', promptId)
+        .eq('user_id', user.id);
+
+      if (!votes) return newTop3;
+
+      console.log('🔄 Recalculating H2H for new top 3:', newTop3.map(img => img.model_name));
+
+      // Build H2H matrix for new top 3
+      const h2hMatrix: Record<string, Record<string, { wins: number; losses: number }>> = {};
+      
+      newTop3.forEach(img1 => {
+        h2hMatrix[img1.id] = {};
+        newTop3.forEach(img2 => {
+          if (img1.id !== img2.id) {
+            const winsVsImg2 = votes.filter(v => 
+              ((v.left_image_id === img1.id && v.right_image_id === img2.id) ||
+               (v.left_image_id === img2.id && v.right_image_id === img1.id)) &&
+              v.winner_id === img1.id
+            ).length;
+            
+            const lossesVsImg2 = votes.filter(v => 
+              ((v.left_image_id === img1.id && v.right_image_id === img2.id) ||
+               (v.left_image_id === img2.id && v.right_image_id === img1.id)) &&
+              v.winner_id === img2.id
+            ).length;
+            
+            h2hMatrix[img1.id][img2.id] = { wins: winsVsImg2, losses: lossesVsImg2 };
+          }
+        });
+      });
+
+      // Update top 3 with new H2H data
+      const updatedTop3 = newTop3.map(img => ({
+        ...img,
+        h2hRelationships: h2hMatrix[img.id]
+      }));
+
+      console.log('✅ Recalculated H2H:', updatedTop3.map(img => ({
+        name: img.model_name,
+        h2h: img.h2hRelationships
+      })));
+
+      return updatedTop3;
+    } catch (error) {
+      console.error('❌ Error recalculating H2H:', error);
+      return newTop3;
+    }
   };
 
   const loadQualityMetrics = async () => {
@@ -398,20 +462,37 @@ export const RankingModal = ({
     }
   };
 
-  const handleSwapImage = (imageToSwap: ImageWithWins, position: number) => {
-    console.log('🔄 User swapping image:', {
-      swapIn: imageToSwap.model_name,
-      swapOut: rankings[position].model_name,
+  const handleSwapImage = async (imageToSwap: ImageWithWins, position: number) => {
+    const oldImage = rankings[position];
+    
+    console.log('🔄 Swap Details:', {
+      swapIn: {
+        name: imageToSwap.model_name,
+        wins: imageToSwap.wins,
+        elo: imageToSwap.elo,
+        h2hKeys: Object.keys(imageToSwap.h2hRelationships || {})
+      },
+      swapOut: {
+        name: oldImage.model_name,
+        wins: oldImage.wins,
+        elo: oldImage.elo,
+      },
       position: position + 1,
+      availableCount: computedAvailableImages.length
     });
 
-    const oldImage = rankings[position];
     const newRankings = [...rankings];
     newRankings[position] = imageToSwap;
     
-    setRankings(newRankings);
-    setAvailableImages(prev => [...prev.filter(img => img.id !== imageToSwap.id), oldImage]);
-    setSwappedImageIds(prev => [...prev, imageToSwap.id]);
+    // PHASE 3: Recalculate H2H for new top 3
+    const rankingsWithH2H = await recalculateH2HForTop3(newRankings);
+    setRankings(rankingsWithH2H);
+    
+    // PHASE 4: Deduplicate swapped image IDs
+    setSwappedImageIds(prev => {
+      const uniqueIds = new Set([...prev, imageToSwap.id]);
+      return Array.from(uniqueIds);
+    });
     
     // Set default rating for swapped image
     setRatings(prev => ({
@@ -419,11 +500,15 @@ export const RankingModal = ({
       [imageToSwap.id]: 5,
     }));
 
-    // Update ranking reason
-    setRankingReasons(prev => ({
-      ...prev,
-      [imageToSwap.id]: `${imageToSwap.wins} wins`,
-    }));
+    // PHASE 2: Regenerate all ranking reasons with H2H context
+    const updatedReasons = generateRankingReasons(initialWinners, rankingsWithH2H);
+    setRankingReasons(updatedReasons);
+
+    // PHASE 5: Show toast feedback
+    toast.success(`Swapped ${oldImage.model_name} → ${imageToSwap.model_name}`, {
+      description: `Position #${position + 1} updated`,
+      duration: 2000,
+    });
   };
 
   const validateRankings = () => {
@@ -631,8 +716,9 @@ export const RankingModal = ({
                     setRatings({ ...ratings, [image.id]: value })
                   }
                   rankingReason={rankingReasons[image.id]}
-                  availableImages={availableImages}
+                  availableImages={computedAvailableImages}
                   onReplace={(imageToSwap) => handleSwapImage(imageToSwap, index)}
+                  isSwapped={swappedImageIds.includes(image.id)}
                 />
               ))}
             </div>
@@ -640,7 +726,7 @@ export const RankingModal = ({
         </DndContext>
 
         {/* View Other Images Section */}
-        {availableImages.length > 3 && (
+        {computedAvailableImages.length > 0 && (
           <div className="border-t pt-4 mt-6">
             <button
               onClick={() => setShowAllImages(!showAllImages)}
@@ -648,14 +734,14 @@ export const RankingModal = ({
             >
               <span className="flex items-center gap-2">
                 <ArrowDownUp className="w-4 h-4" />
-                View Other Images ({availableImages.length - 3})
+                View Other Images ({computedAvailableImages.length})
               </span>
               {showAllImages ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             
             {showAllImages && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {availableImages.slice(3).map((img) => (
+                {computedAvailableImages.map((img) => (
                   <div key={img.id} className="group relative rounded-lg border overflow-hidden hover:border-primary transition-colors">
                     <div className="aspect-square">
                       <img
