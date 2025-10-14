@@ -3,7 +3,7 @@ import { ImageCard } from "./ImageCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowRight, Trash2 } from "lucide-react";
+import { ArrowRight, Trash2, Undo } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import ImageCardSkeleton from "./ImageCardSkeleton";
 import ProgressGamification from "./ProgressGamification";
@@ -17,6 +17,15 @@ interface Image {
 interface ImageWithWins extends Image {
   wins: number;
   elo?: number;
+}
+
+interface VoteHistoryEntry {
+  voteId: string;
+  championBefore: Image;
+  challengerBefore: Image;
+  winner: Image;
+  remainingBefore: Image[];
+  timestamp: number;
 }
 
 interface ComparisonViewProps {
@@ -356,6 +365,12 @@ export const ComparisonView = ({
   const [pendingVote, setPendingVote] = useState<boolean>(false);
   const [voteCache, setVoteCache] = useState<Set<string>>(new Set());
   
+  // Pair tracking to prevent duplicate presentations
+  const [presentedPairs, setPresentedPairs] = useState<Set<string>>(new Set());
+  
+  // Vote history for undo functionality
+  const [voteHistory, setVoteHistory] = useState<VoteHistoryEntry[]>([]);
+  
   // PHASE 2: Add debounce mechanism
   const [isTournamentCompleting, setIsTournamentCompleting] = useState(false);
   
@@ -364,6 +379,28 @@ export const ComparisonView = ({
   
   const estimatedTotal = Math.ceil(images.length * 2.5);
   
+  // Helper: Disambiguate duplicate model names by adding suffixes
+  const disambiguateModelNames = (imgs: Image[]): Image[] => {
+    const nameCounts: Record<string, number> = {};
+    const nameIndices: Record<string, number> = {};
+    
+    // Count occurrences
+    imgs.forEach(img => {
+      nameCounts[img.model_name] = (nameCounts[img.model_name] || 0) + 1;
+    });
+    
+    // Add suffixes for duplicates
+    return imgs.map(img => {
+      if (nameCounts[img.model_name] > 1) {
+        nameIndices[img.model_name] = (nameIndices[img.model_name] || 0) + 1;
+        return {
+          ...img,
+          model_name: `${img.model_name} (${nameIndices[img.model_name]})`
+        };
+      }
+      return img;
+    });
+  };
 
   // Initialize King-of-the-Hill tournament
   useEffect(() => {
@@ -373,6 +410,9 @@ export const ComparisonView = ({
         setIsLoading(false);
         return;
       }
+      
+      // Disambiguate model names first
+      const disambiguatedImages = disambiguateModelNames(images);
 
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -445,11 +485,14 @@ export const ComparisonView = ({
         if (existingVotes && existingVotes.length > 0) {
           // Populate vote cache with existing votes
           const cache = new Set<string>();
+          const pairSet = new Set<string>();
           existingVotes.forEach(vote => {
             const key = getVotePairKey(vote.left_image_id, vote.right_image_id);
             cache.add(key);
+            pairSet.add(key);
           });
           setVoteCache(cache);
+          setPresentedPairs(pairSet);
           
           // Reconstruct state from votes
           const usedImages = new Set<string>();
@@ -460,11 +503,11 @@ export const ComparisonView = ({
           });
 
           // Calculate current rankings to determine champion
-          const rankedImages = calculateEloRatings(images, existingVotes);
+          const rankedImages = calculateEloRatings(disambiguatedImages, existingVotes);
           const currentChamp = rankedImages[0];
           
           // Find images not yet used
-          const unused = images.filter(img => !usedImages.has(img.id));
+          const unused = disambiguatedImages.filter(img => !usedImages.has(img.id));
           
           setChampion(currentChamp);
           setChallenger(unused.length > 0 ? unused[0] : null);
@@ -474,9 +517,9 @@ export const ComparisonView = ({
           toast.info(`Resuming: ${existingVotes.length} comparisons completed`);
         } else {
           // Fresh start
-          setChampion(images[0]);
-          setChallenger(images[1]);
-          setRemainingImages(images.slice(2));
+          setChampion(disambiguatedImages[0]);
+          setChallenger(disambiguatedImages[1]);
+          setRemainingImages(disambiguatedImages.slice(2));
           setTotalComparisons(0);
         }
 
@@ -514,6 +557,15 @@ export const ComparisonView = ({
         return;
       }
 
+      // Handle Undo (Ctrl+Z / Cmd+Z)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (voteHistory.length > 0 && animationState === 'idle' && !pendingVote) {
+          await handleUndo();
+        }
+        return;
+      }
+
       // Ignore if images not loaded or animation in progress or vote pending
       if (!champion || !challenger || animationState !== 'idle' || pendingVote) return;
 
@@ -531,7 +583,7 @@ export const ComparisonView = ({
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [champion, challenger, animationState]);
+  }, [champion, challenger, animationState, voteHistory, pendingVote]);
 
   // Reset images loaded state when images change
   useEffect(() => {
@@ -557,6 +609,8 @@ export const ComparisonView = ({
   const resetVotingStateAfterTournament = () => {
     console.log('🔄 Resetting voting state after tournament...');
     setVoteCache(new Set());
+    setPresentedPairs(new Set());
+    setVoteHistory([]);
     setPendingVote(false);
     setAnimationState('idle');
   };
@@ -714,6 +768,7 @@ export const ComparisonView = ({
     setPendingVote(true);
     const pairKey = getVotePairKey(champion.id, challenger.id);
     setVoteCache(prev => new Set(prev).add(pairKey));
+    setPresentedPairs(prev => new Set(prev).add(pairKey));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -727,7 +782,7 @@ export const ComparisonView = ({
       const animationTime = 300; // Faster, smoother animation duration
 
       // --- Database operations can happen here ---
-      const { error } = await supabase.from("votes").insert({
+      const { data: voteData, error } = await supabase.from("votes").insert({
         prompt_id: promptId,
         user_email: userEmail,
         user_id: user.id,
@@ -735,9 +790,57 @@ export const ComparisonView = ({
         right_image_id: challenger.id,
         winner_id: winner.id,
         is_tie: false,
-      });
+      }).select('id').single();
 
-      if (error) throw error;
+      if (error) {
+        // Handle duplicate key constraint error gracefully
+        if (error.code === '23505') {
+          console.warn('⚠️ Duplicate vote prevented:', error.message);
+          toast.info("This comparison was already recorded");
+          setPendingVote(false);
+          setVoteCache(prev => {
+            const newCache = new Set(prev);
+            newCache.delete(pairKey);
+            return newCache;
+          });
+          
+          // Skip to next comparison without saving
+          if (isChampionWinner) {
+            if (remainingImages.length > 0) {
+              setChallenger(remainingImages[0]);
+              setRemainingImages(prev => prev.slice(1));
+            } else {
+              setChallenger(null);
+            }
+          } else {
+            if (remainingImages.length > 0) {
+              setChampion(remainingImages[0]);
+              setChallenger(challenger);
+              setRemainingImages(prev => prev.slice(1));
+            } else {
+              setChampion(null);
+            }
+          }
+          return;
+        }
+        throw error;
+      }
+      
+      // Store vote in history for undo functionality (limit to last 10)
+      if (voteData?.id) {
+        setVoteHistory(prev => {
+          const newHistory = [...prev, {
+            voteId: voteData.id,
+            championBefore: champion,
+            challengerBefore: challenger,
+            winner: winner,
+            remainingBefore: [...remainingImages],
+            timestamp: Date.now(),
+          }];
+          // Keep only last 10 votes
+          return newHistory.slice(-10);
+        });
+      }
 
       const newComparisonCount = totalComparisons + 1;
       setTotalComparisons(newComparisonCount);
@@ -801,6 +904,70 @@ export const ComparisonView = ({
         newCache.delete(pairKey);
         return newCache;
       });
+      setPresentedPairs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(pairKey);
+        return newSet;
+      });
+    }
+  };
+
+  const handleUndo = async () => {
+    if (voteHistory.length === 0 || pendingVote || animationState !== 'idle') {
+      return;
+    }
+
+    const lastVote = voteHistory[voteHistory.length - 1];
+    
+    try {
+      setPendingVote(true);
+      
+      // 1. Delete vote from database
+      const { error: deleteError } = await supabase
+        .from('votes')
+        .delete()
+        .eq('id', lastVote.voteId);
+
+      if (deleteError) throw deleteError;
+
+      // 2. Restore UI state
+      setChampion(lastVote.championBefore);
+      setChallenger(lastVote.challengerBefore);
+      setRemainingImages(lastVote.remainingBefore);
+      setTotalComparisons(prev => prev - 1);
+
+      // 3. Remove from vote cache and presented pairs
+      const pairKey = getVotePairKey(lastVote.championBefore.id, lastVote.challengerBefore.id);
+      setVoteCache(prev => {
+        const newCache = new Set(prev);
+        newCache.delete(pairKey);
+        return newCache;
+      });
+      setPresentedPairs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(pairKey);
+        return newSet;
+      });
+
+      // 4. Pop from history
+      setVoteHistory(prev => prev.slice(0, -1));
+
+      // 5. Update session count
+      if (sessionId) {
+        await supabase
+          .from('comparison_sessions')
+          .update({ completed_comparisons: totalComparisons - 1 })
+          .eq('id', sessionId);
+      }
+
+      toast.success("Vote undone", {
+        description: "Press Ctrl+Z to undo more",
+      });
+    } catch (error: any) {
+      console.error("Error undoing vote:", error);
+      toast.error("Failed to undo vote");
+    } finally {
+      setPendingVote(false);
     }
   };
 
@@ -901,12 +1068,17 @@ export const ComparisonView = ({
       setTotalComparisons(0);
       setSessionId(null);
       setVoteCache(new Set());
+      setPresentedPairs(new Set());
+      setVoteHistory([]);
       setPendingVote(false);
       
+      // Disambiguate model names before resetting
+      const disambiguatedImages = disambiguateModelNames(images);
+      
       // Reset to fresh King-of-the-Hill state
-      setChampion(images[0]);
-      setChallenger(images[1]);
-      setRemainingImages(images.slice(2));
+      setChampion(disambiguatedImages[0]);
+      setChallenger(disambiguatedImages[1]);
+      setRemainingImages(disambiguatedImages.slice(2));
       
       // Create new session
       console.log('✨ Creating new session...');
@@ -976,14 +1148,30 @@ export const ComparisonView = ({
             </div>
           )}
 
-          {/* Reset Button */}
-          {totalComparisons > 0 && (
-            <div className="flex justify-center pt-2">
+          {/* Action Buttons */}
+          <div className="flex justify-center gap-3 pt-2">
+            {/* Undo Button */}
+            {voteHistory.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                onClick={handleUndo}
+                disabled={pendingVote || animationState !== 'idle'}
+              >
+                <Undo className="w-4 h-4" />
+                Undo Last Vote
+                <span className="text-xs text-muted-foreground ml-1">(Ctrl+Z)</span>
+              </Button>
+            )}
+            
+            {/* Reset Button */}
+            {totalComparisons > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-2">
                     <Trash2 className="w-4 h-4" />
-                    Reset My Votes
+                    Reset All Votes
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -1001,8 +1189,8 @@ export const ComparisonView = ({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Comparison */}
