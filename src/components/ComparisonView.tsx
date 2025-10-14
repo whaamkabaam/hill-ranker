@@ -236,12 +236,10 @@ export const ComparisonView = ({
     const handleKeyPress = async (e: KeyboardEvent) => {
       if (!currentPair) return;
 
-      if (e.key.toLowerCase() === "a") {
+      if (e.key === "ArrowLeft") {
         await handleSelection(currentPair.left);
-      } else if (e.key.toLowerCase() === "b") {
+      } else if (e.key === "ArrowRight") {
         await handleSelection(currentPair.right);
-      } else if (e.key.toLowerCase() === "s") {
-        await handleTie();
       }
     };
 
@@ -396,48 +394,6 @@ export const ComparisonView = ({
     }
   };
 
-  const handleTie = async () => {
-    if (!currentPair) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("You must be logged in to vote");
-        return;
-      }
-
-      const { data, error } = await supabase.from("votes").insert({
-        prompt_id: promptId,
-        user_email: userEmail,
-        user_id: user.id,
-        left_image_id: currentPair.left.id,
-        right_image_id: currentPair.right.id,
-        winner_id: null,
-        is_tie: true,
-      }).select().single();
-
-      if (error) throw error;
-
-      setVoteHistory(prev => [...prev, data.id]);
-      setCompletedPairs(prev => new Set([...prev, currentPair.pairId]));
-
-      // Update session progress
-      if (sessionId) {
-        await supabase
-          .from('comparison_sessions')
-          .update({ 
-            completed_comparisons: completedPairs.size + 1 
-          })
-          .eq('id', sessionId);
-      }
-
-      // Move to next uncompleted pair
-      moveToNextPair();
-    } catch (error) {
-      console.error("Error saving tie:", error);
-      toast.error("Failed to save tie");
-    }
-  };
 
   const moveToNextPair = () => {
     console.log('🔄 Moving to next pair. Current:', currentPairIndex, 'Completed:', completedPairs.size, 'Total:', allPairs.length);
@@ -694,35 +650,25 @@ export const ComparisonView = ({
 
         {/* Controls */}
         <div className="glass rounded-xl p-6 space-y-4">
-          <div className="flex justify-center items-center gap-4">
+          <div className="flex justify-center items-center gap-6">
             <Button
               onClick={() => handleSelection(currentPair.left)}
               variant="outline"
               size="lg"
-              className="glass-hover gap-2"
+              className="glass-hover gap-3 min-w-[180px]"
               disabled={!imagesLoaded.left || !imagesLoaded.right}
             >
-              <kbd className="px-2 py-1 bg-muted rounded text-xs">A</kbd>
+              <kbd className="px-3 py-1.5 bg-muted rounded text-sm font-bold">←</kbd>
               Left Wins
-            </Button>
-            <Button
-              onClick={handleTie}
-              variant="outline"
-              size="lg"
-              className="glass-hover gap-2"
-              disabled={!imagesLoaded.left || !imagesLoaded.right}
-            >
-              <kbd className="px-2 py-1 bg-muted rounded text-xs">S</kbd>
-              Tie
             </Button>
             <Button
               onClick={() => handleSelection(currentPair.right)}
               variant="outline"
               size="lg"
-              className="glass-hover gap-2"
+              className="glass-hover gap-3 min-w-[180px]"
               disabled={!imagesLoaded.left || !imagesLoaded.right}
             >
-              <kbd className="px-2 py-1 bg-muted rounded text-xs">D</kbd>
+              <kbd className="px-3 py-1.5 bg-muted rounded text-sm font-bold">→</kbd>
               Right Wins
             </Button>
           </div>
@@ -753,10 +699,6 @@ export const ComparisonView = ({
               </Button>
             )}
           </div>
-
-          <p className="text-xs text-center text-muted-foreground">
-            💡 Tip: Use keyboard shortcuts for faster voting
-          </p>
         </div>
       </div>
     </div>
