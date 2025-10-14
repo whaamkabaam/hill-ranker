@@ -25,7 +25,7 @@ const tutorialSteps = [
   },
   {
     title: 'Quality Matters',
-    description: 'Take your time to evaluate details like realism, composition, and overall quality. Your consistency is tracked!',
+    description: 'Take your time to evaluate details like realism, composition, and overall quality.',
     icon: '⭐',
   },
   {
