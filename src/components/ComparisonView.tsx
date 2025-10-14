@@ -648,8 +648,7 @@ export const ComparisonView = ({
         <div className="flex gap-8 items-start">
           {!imagesLoaded.left ? (
             <ImageCardSkeleton />
-          ) : null}
-          <div className={!imagesLoaded.left ? 'hidden' : 'flex-1'}>
+          ) : (
             <ImageCard
               imageUrl={currentPair.left.image_url}
               modelName={currentPair.left.model_name}
@@ -658,12 +657,11 @@ export const ComparisonView = ({
               onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
               blindMode={true}
             />
-          </div>
+          )}
 
           {!imagesLoaded.right ? (
             <ImageCardSkeleton />
-          ) : null}
-          <div className={!imagesLoaded.right ? 'hidden' : 'flex-1'}>
+          ) : (
             <ImageCard
               imageUrl={currentPair.right.image_url}
               modelName={currentPair.right.model_name}
@@ -672,7 +670,7 @@ export const ComparisonView = ({
               onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
               blindMode={true}
             />
-          </div>
+          )}
         </div>
 
         {/* Controls */}
