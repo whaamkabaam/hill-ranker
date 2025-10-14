@@ -94,15 +94,18 @@ const ImageRanker = () => {
     console.log('📊 Received winners:', winnerImages);
     console.log('📊 Current winners state before update:', winners);
     
+    // PHASE 1: Validate winners before proceeding
     if (!winnerImages || winnerImages.length < 3) {
       console.error('❌ Invalid winner images:', winnerImages);
       toast.error(`Not enough winners to rank (got ${winnerImages?.length || 0}, need 3)`);
+      setShowRanking(false); // ✅ Ensure modal doesn't open
       return;
     }
     
     console.log('✅ Setting winners and showing ranking modal');
     setWinners(winnerImages);
     setShowRanking(true);
+    setStartTime(Date.now());
     console.log('✅ State updates queued');
   };
 
@@ -239,7 +242,7 @@ const ImageRanker = () => {
         </div>
       </div>
 
-      <div className="pt-20 p-8">
+      <div className="pt-32 p-8">
         <div className="max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-8">
@@ -280,14 +283,16 @@ const ImageRanker = () => {
         </div>
       </div>
 
-      <RankingModal
-        open={showRanking}
-        winners={winners}
-        promptId={currentPrompt.id}
-        userEmail={user?.email || ''}
-        startTime={startTime}
-        onComplete={handleRankingComplete}
-      />
+      {winners.length >= 3 && (
+        <RankingModal
+          open={showRanking}
+          winners={winners}
+          promptId={currentPrompt.id}
+          userEmail={user?.email || ''}
+          startTime={startTime}
+          onComplete={handleRankingComplete}
+        />
+      )}
     </>
   );
 };

@@ -259,9 +259,14 @@ export const RankingModal = ({
     }
   }, [open, rankings.length, initialWinners]);
 
+  // PHASE 5: Add loading state protection
+  const [isLoadingWinners, setIsLoadingWinners] = useState(false);
+
   // Sync state when winners prop changes (but only if it's NEW data and not submitted)
   useEffect(() => {
-    if (open && winners && winners.length >= 3 && !hasSubmitted) {
+    if (open && winners && winners.length >= 3 && !hasSubmitted && !isLoadingWinners) {
+      setIsLoadingWinners(true);
+      
       // Check if this is actually NEW data (different from what we have)
       const isDifferentData = JSON.stringify(winners.map(w => w.id)) !== 
                              JSON.stringify(initialWinners.map(w => w.id));
@@ -270,6 +275,16 @@ export const RankingModal = ({
       if ((isDifferentData && initialWinners.length === 0) || 
           (isDifferentData && !hasSubmitted)) {
         console.log('✅ Syncing rankings state with NEW winners:', winners);
+        
+        // PHASE 6: Comprehensive debug logging
+        console.log('🎯 RankingModal State:', {
+          open,
+          winnersLength: winners?.length || 0,
+          initialWinnersLength: initialWinners.length,
+          rankingsLength: rankings.length,
+          hasSubmitted,
+        });
+        
         setInitialWinners(winners);
         setRankings(winners.slice(0, 3));
         
@@ -288,8 +303,10 @@ export const RankingModal = ({
         // Load quality metrics
         loadQualityMetrics();
       }
+      
+      setIsLoadingWinners(false);
     }
-  }, [open, winners, hasSubmitted, initialWinners]);
+  }, [open, winners, hasSubmitted, initialWinners, isLoadingWinners]);
 
   // Reset submission guard when modal closes
   useEffect(() => {
@@ -397,6 +414,32 @@ export const RankingModal = ({
     } catch (error) {
       console.error('❌ Error recalculating H2H:', error);
       return newTop3;
+    }
+  };
+
+  // PHASE 0: calculateMetrics moved before this function (see line 337)
+  const calculateMetrics = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: votes } = await supabase
+        .from('votes')
+        .select('*')
+        .eq('prompt_id', promptId)
+        .eq('user_id', user.id);
+
+      if (!votes || votes.length === 0) return null;
+
+      // Calculate all quality metrics
+      const metrics = calculateQualityMetrics(votes);
+      
+      console.log('📊 Quality Metrics:', metrics);
+      
+      return metrics;
+    } catch (error) {
+      console.error('Error calculating metrics:', error);
+      return null;
     }
   };
 
@@ -528,38 +571,6 @@ export const RankingModal = ({
     }
 
     return true;
-  };
-
-  const calculateMetrics = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data: votes } = await supabase
-        .from('votes')
-        .select('*')
-        .eq('prompt_id', promptId)
-        .eq('user_id', user.id);
-
-      if (!votes || votes.length === 0) return null;
-
-      // Calculate all quality metrics
-      const metrics = calculateQualityMetrics(votes);
-      
-      console.log('📊 Quality Metrics:', metrics);
-      
-      // Show warnings for quality issues
-      if (metrics.qualityFlags.length > 0) {
-        if (metrics.qualityFlags.includes('too_fast')) {
-          toast.info('You voted quite quickly. Please ensure your ranking is accurate.');
-        }
-      }
-      
-      return metrics;
-    } catch (error) {
-      console.error("Error calculating metrics:", error);
-      return null;
-    }
   };
 
   const handleSubmit = async () => {
@@ -794,11 +805,16 @@ export const RankingModal = ({
                       const other = rankings.find(r => r.id === otherId);
                       if (!other) return null;
                       
+                      const totalMatches = record.wins + record.losses;
+                      const displayText = totalMatches === 0 
+                        ? `vs ${other.model_name}: No direct matchups`
+                        : `vs ${other.model_name}: ${record.wins}-${record.losses}`;
+                      
                       return (
                         <p key={otherId} className="text-xs text-muted-foreground ml-4">
-                          vs {other.model_name}: {record.wins}-{record.losses}
-                          {record.wins > record.losses && ' ✅'}
-                          {record.wins < record.losses && ' ❌'}
+                          {displayText}
+                          {record.wins > record.losses && totalMatches > 0 && ' ✅'}
+                          {record.wins < record.losses && totalMatches > 0 && ' ❌'}
                         </p>
                       );
                     })}
