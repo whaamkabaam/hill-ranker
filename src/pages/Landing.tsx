@@ -10,10 +10,14 @@ const Landing = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
-  // Redirect if already authenticated
+  // Redirect based on authentication status
   useEffect(() => {
-    if (!loading && user) {
-      navigate('/dashboard');
+    if (!loading) {
+      if (user) {
+        navigate('/dashboard');
+      } else {
+        navigate('/auth');
+      }
     }
   }, [user, loading, navigate]);
 
