@@ -79,56 +79,150 @@ const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => 
     .sort((a, b) => (b.elo || 0) - (a.elo || 0));
 };
 
-// Utility: Resolve transitivity violations using head-to-head results
-const resolveTransitivityViolations = (
-  rankedImages: ImageWithWins[],
+/**
+ * Detect circular dependencies using Tarjan's algorithm
+ * Returns array of cycles (e.g., [[imgA, imgB, imgC]] means A>B>C>A)
+ */
+const detectCycles = (
+  images: ImageWithWins[],
   votes: any[]
-): ImageWithWins[] => {
-  // Build head-to-head record
-  const h2h: Record<string, Record<string, number>> = {};
+): string[][] => {
+  // Build adjacency list where A->B means A beat B
+  const graph: Record<string, Set<string>> = {};
+  images.forEach(img => {
+    graph[img.id] = new Set();
+  });
   
   votes.forEach(vote => {
-    if (vote.is_tie) return;
+    if (vote.is_tie || !vote.winner_id) return;
     
-    const winner = vote.winner_id;
-    const loser = vote.winner_id === vote.left_image_id 
+    const winnerId = vote.winner_id;
+    const loserId = vote.left_image_id === winnerId 
       ? vote.right_image_id 
       : vote.left_image_id;
     
-    if (!h2h[winner]) h2h[winner] = {};
-    h2h[winner][loser] = (h2h[winner][loser] || 0) + 1;
+    graph[winnerId].add(loserId);
   });
   
-  // Resolve violations (bubble sort with h2h check)
-  let resolved = [...rankedImages];
-  let swapped = true;
-  let swapCount = 0;
+  // Find strongly connected components (cycles)
+  const visited = new Set<string>();
+  const stack: string[] = [];
+  const onStack = new Set<string>();
+  const cycles: string[][] = [];
   
-  while (swapped) {
-    swapped = false;
-    for (let i = 0; i < resolved.length - 1; i++) {
-      const higher = resolved[i];
-      const lower = resolved[i + 1];
-      
-      // Check if lower beat higher directly
-      const lowerBeatsHigher = (h2h[lower.id]?.[higher.id] || 0) > 
-                                (h2h[higher.id]?.[lower.id] || 0);
-      
-      if (lowerBeatsHigher) {
-        // Swap them
-        [resolved[i], resolved[i + 1]] = [resolved[i + 1], resolved[i]];
-        swapped = true;
-        swapCount++;
-        console.log(`🔄 Swapped ${higher.model_name} with ${lower.model_name} due to direct head-to-head result`);
+  const dfs = (nodeId: string, path: string[]) => {
+    visited.add(nodeId);
+    onStack.add(nodeId);
+    path.push(nodeId);
+    
+    const neighbors = graph[nodeId] || new Set();
+    for (const neighborId of neighbors) {
+      if (!visited.has(neighborId)) {
+        dfs(neighborId, [...path]);
+      } else if (onStack.has(neighborId)) {
+        // Found a cycle!
+        const cycleStart = path.indexOf(neighborId);
+        if (cycleStart !== -1) {
+          const cycle = path.slice(cycleStart);
+          if (cycle.length > 1) {
+            cycles.push(cycle);
+          }
+        }
       }
     }
-  }
+    
+    onStack.delete(nodeId);
+  };
   
-  if (swapCount > 0) {
-    console.log(`✅ Resolved ${swapCount} transitivity violation(s) using head-to-head results`);
-  }
+  images.forEach(img => {
+    if (!visited.has(img.id)) {
+      dfs(img.id, []);
+    }
+  });
   
-  return resolved;
+  return cycles;
+};
+
+/**
+ * Resolve rankings using graph-based approach with cycle detection
+ * Handles circular dependencies by using Elo as tiebreaker within cycles
+ */
+const resolveRankingsWithCycles = (
+  rankedImages: ImageWithWins[],
+  votes: any[]
+): ImageWithWins[] => {
+  console.log('🔧 Resolving rankings with cycle detection...');
+  console.log('📊 Initial ranked images:', rankedImages.map(img => ({
+    model: img.model_name,
+    wins: img.wins,
+    elo: img.elo
+  })));
+  
+  // Detect circular dependencies
+  const cycles = detectCycles(rankedImages, votes);
+  const inCycle = new Set<string>();
+  
+  cycles.forEach(cycle => {
+    const modelNames = cycle.map(id => {
+      const img = rankedImages.find(i => i.id === id);
+      return img?.model_name || id;
+    });
+    console.log(`⚠️ Circular dependency detected: ${modelNames.join(' → ')} → ${modelNames[0]}`);
+    console.log('   Using Elo scores to break the cycle.');
+    cycle.forEach(id => inCycle.add(id));
+  });
+  
+  // Build adjacency list for head-to-head wins
+  const h2hWins: Record<string, Record<string, number>> = {};
+  rankedImages.forEach(img => {
+    h2hWins[img.id] = {};
+  });
+  
+  votes.forEach(vote => {
+    if (vote.is_tie || !vote.winner_id) return;
+    
+    const winnerId = vote.winner_id;
+    const loserId = vote.left_image_id === winnerId 
+      ? vote.right_image_id 
+      : vote.left_image_id;
+    
+    if (!h2hWins[winnerId][loserId]) {
+      h2hWins[winnerId][loserId] = 0;
+    }
+    h2hWins[winnerId][loserId]++;
+  });
+  
+  // Custom sort function
+  const result = [...rankedImages].sort((a, b) => {
+    // Check if both are in a cycle together
+    const aInCycle = inCycle.has(a.id);
+    const bInCycle = inCycle.has(b.id);
+    
+    // If both in cycle, use Elo
+    if (aInCycle && bInCycle) {
+      return (b.elo || 0) - (a.elo || 0);
+    }
+    
+    // Check head-to-head record (only if not in cycle)
+    const aWinsVsB = h2hWins[a.id]?.[b.id] || 0;
+    const bWinsVsA = h2hWins[b.id]?.[a.id] || 0;
+    
+    if (aWinsVsB > bWinsVsA) return -1; // a should rank higher
+    if (bWinsVsA > aWinsVsB) return 1;  // b should rank higher
+    
+    // If head-to-head is tied or no direct comparison, use Elo
+    return (b.elo || 0) - (a.elo || 0);
+  });
+  
+  console.log('✅ Ranking resolution complete');
+  console.log('📊 Final ranked images:', result.map(img => ({
+    model: img.model_name,
+    wins: img.wins,
+    elo: img.elo,
+    inCycle: inCycle.has(img.id)
+  })));
+  
+  return result;
 };
 
 export const ComparisonView = ({
@@ -319,8 +413,8 @@ export const ComparisonView = ({
         wins: img.wins 
       })));
       
-      // Resolve transitivity violations using head-to-head results
-      rankedImages = resolveTransitivityViolations(rankedImages, allVotes);
+      // Resolve using graph-based approach (handles cycles)
+      rankedImages = resolveRankingsWithCycles(rankedImages, allVotes);
       
       if (rankedImages.length < 3) {
         toast.error(`Only ${rankedImages.length} images available, need at least 3`);

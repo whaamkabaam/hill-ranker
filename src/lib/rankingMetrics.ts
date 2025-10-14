@@ -154,6 +154,69 @@ export const detectQualityIssues = (
 };
 
 /**
+ * Detect circular dependencies in voting patterns
+ * Returns array of cycles where each cycle is an array of image IDs
+ * e.g., [["img1", "img2", "img3"]] means img1 > img2 > img3 > img1
+ */
+export const detectCircularDependencies = (votes: Vote[]): string[][] => {
+  // Build adjacency list (winner -> losers)
+  const graph: Record<string, Set<string>> = {};
+  const allImages = new Set<string>();
+  
+  votes.forEach(vote => {
+    if (vote.is_tie || !vote.winner_id) return;
+    
+    const winnerId = vote.winner_id;
+    const loserId = vote.left_image_id === winnerId 
+      ? vote.right_image_id 
+      : vote.left_image_id;
+    
+    allImages.add(winnerId);
+    allImages.add(loserId);
+    
+    if (!graph[winnerId]) graph[winnerId] = new Set();
+    graph[winnerId].add(loserId);
+  });
+  
+  // Find cycles using DFS
+  const visited = new Set<string>();
+  const onStack = new Set<string>();
+  const cycles: string[][] = [];
+  
+  const dfs = (nodeId: string, path: string[]) => {
+    visited.add(nodeId);
+    onStack.add(nodeId);
+    path.push(nodeId);
+    
+    const neighbors = graph[nodeId] || new Set();
+    for (const neighborId of neighbors) {
+      if (!visited.has(neighborId)) {
+        dfs(neighborId, [...path]);
+      } else if (onStack.has(neighborId)) {
+        // Found a cycle
+        const cycleStart = path.indexOf(neighborId);
+        if (cycleStart !== -1) {
+          const cycle = path.slice(cycleStart);
+          if (cycle.length > 1) {
+            cycles.push(cycle);
+          }
+        }
+      }
+    }
+    
+    onStack.delete(nodeId);
+  };
+  
+  allImages.forEach(imageId => {
+    if (!visited.has(imageId)) {
+      dfs(imageId, []);
+    }
+  });
+  
+  return cycles;
+};
+
+/**
  * Calculate all quality metrics at once
  */
 export const calculateQualityMetrics = (votes: Vote[]): QualityMetrics => {
