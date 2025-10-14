@@ -20,7 +20,7 @@ const tutorialSteps = [
   },
   {
     title: 'How to Vote',
-    description: 'Click on the image you prefer, or use keyboard shortcuts: Press A for left, L for right, T for tie.',
+    description: 'Click on the image you prefer, or use keyboard shortcuts: Press A for left, S for tie, D for right.',
     icon: '⌨️',
   },
   {
@@ -112,12 +112,12 @@ export default function OnboardingTutorial({ onComplete }: OnboardingTutorialPro
                 <span className="text-xs text-muted-foreground">Vote Left</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <kbd className="px-3 py-2 bg-background border rounded text-sm font-mono">L</kbd>
-                <span className="text-xs text-muted-foreground">Vote Right</span>
+                <kbd className="px-3 py-2 bg-background border rounded text-sm font-mono">S</kbd>
+                <span className="text-xs text-muted-foreground">Mark as Tie</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <kbd className="px-3 py-2 bg-background border rounded text-sm font-mono">T</kbd>
-                <span className="text-xs text-muted-foreground">Mark as Tie</span>
+                <kbd className="px-3 py-2 bg-background border rounded text-sm font-mono">D</kbd>
+                <span className="text-xs text-muted-foreground">Vote Right</span>
               </div>
             </div>
           )}

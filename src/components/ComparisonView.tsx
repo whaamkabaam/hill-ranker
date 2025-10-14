@@ -236,9 +236,9 @@ export const ComparisonView = ({
 
       if (e.key.toLowerCase() === "a") {
         await handleSelection(currentPair.left);
-      } else if (e.key.toLowerCase() === "l") {
+      } else if (e.key.toLowerCase() === "d") {
         await handleSelection(currentPair.right);
-      } else if (e.key.toLowerCase() === "t") {
+      } else if (e.key.toLowerCase() === "s") {
         await handleTie();
       }
     };
@@ -657,7 +657,7 @@ export const ComparisonView = ({
               className="glass-hover gap-2"
               disabled={!imagesLoaded.left || !imagesLoaded.right}
             >
-              <kbd className="px-2 py-1 bg-muted rounded text-xs">T</kbd>
+              <kbd className="px-2 py-1 bg-muted rounded text-xs">S</kbd>
               Tie
             </Button>
             <Button
@@ -667,7 +667,7 @@ export const ComparisonView = ({
               className="glass-hover gap-2"
               disabled={!imagesLoaded.left || !imagesLoaded.right}
             >
-              <kbd className="px-2 py-1 bg-muted rounded text-xs">L</kbd>
+              <kbd className="px-2 py-1 bg-muted rounded text-xs">D</kbd>
               Right Wins
             </Button>
           </div>

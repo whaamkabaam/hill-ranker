@@ -62,7 +62,7 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blin
           <>
             <p className="text-lg font-medium">{modelName}</p>
             <p className="text-sm text-muted-foreground">
-              Press {side === "left" ? "A" : "L"} to select
+              Press {side === "left" ? "A" : "D"} to select
             </p>
           </>
         )}
