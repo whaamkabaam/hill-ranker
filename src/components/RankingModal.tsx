@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { motion } from "framer-motion";
@@ -23,7 +24,7 @@ import {
   horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trophy, Sparkles, ArrowDownUp, ChevronDown, ChevronUp } from "lucide-react";
+import { GripVertical, Trophy, Sparkles, ArrowDownUp, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 
 interface Image {
   id: string;
@@ -52,9 +53,11 @@ interface SortableImageProps {
   rating: number;
   onRatingChange: (value: number) => void;
   rankingReason?: string;
+  availableImages: ImageWithWins[];
+  onReplace: (imageToSwap: ImageWithWins) => void;
 }
 
-const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReason }: SortableImageProps) => {
+const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReason, availableImages, onReplace }: SortableImageProps) => {
   const {
     attributes,
     listeners,
@@ -123,6 +126,52 @@ const SortableImageCompact = ({ image, rank, rating, onRatingChange, rankingReas
           </span>
         )}
       </div>
+
+      {/* Replace button */}
+      {availableImages.length > 0 && (
+        <div className="mb-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full text-xs h-7"
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Replace
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-3" align="center">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Replace with:</p>
+                <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
+                  {availableImages.map((img) => (
+                    <button
+                      key={img.id}
+                      onClick={() => onReplace(img)}
+                      className="flex flex-col items-center gap-1 p-2 rounded-lg border hover:border-primary hover:bg-accent transition-colors"
+                    >
+                      <div className="w-20 h-20 rounded overflow-hidden">
+                        <img
+                          src={img.image_url}
+                          alt={img.model_name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <p className="text-xs font-medium truncate w-full text-center">
+                        {img.model_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {img.wins} wins
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
 
       {/* Compact rating slider */}
       <div className="space-y-1.5">
@@ -543,6 +592,8 @@ export const RankingModal = ({
                     setRatings({ ...ratings, [image.id]: value })
                   }
                   rankingReason={rankingReasons[image.id]}
+                  availableImages={availableImages}
+                  onReplace={(imageToSwap) => handleSwapImage(imageToSwap, index)}
                 />
               ))}
             </div>
