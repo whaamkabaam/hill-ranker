@@ -231,6 +231,49 @@ export const ComparisonView = ({
     }
   }, [completedPairs, allPairs, isLoading]);
 
+  // STEP 5: Sync state with database periodically
+  useEffect(() => {
+    if (isLoading || !sessionId) return;
+
+    const syncStateWithDatabase = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: dbVotes } = await supabase
+          .from('votes')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('prompt_id', promptId);
+
+        if (dbVotes) {
+          // Check if local state matches database
+          if (dbVotes.length !== voteHistory.length) {
+            console.log('🔄 State drift detected, syncing with database');
+            
+            const completed = new Set<string>();
+            dbVotes.forEach(vote => {
+              const pairId1 = `${vote.left_image_id}-${vote.right_image_id}`;
+              const pairId2 = `${vote.right_image_id}-${vote.left_image_id}`;
+              completed.add(pairId1);
+              completed.add(pairId2);
+            });
+            
+            setCompletedPairs(completed);
+            setVoteHistory(dbVotes.map(v => v.id));
+            console.log('✅ State synced:', dbVotes.length, 'votes');
+          }
+        }
+      } catch (error) {
+        console.error('Error syncing state:', error);
+      }
+    };
+
+    // Sync every 5 seconds
+    const interval = setInterval(syncStateWithDatabase, 5000);
+    return () => clearInterval(interval);
+  }, [isLoading, sessionId, promptId, voteHistory.length]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = async (e: KeyboardEvent) => {
@@ -353,6 +396,23 @@ export const ComparisonView = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("You must be logged in to vote");
+        return;
+      }
+
+      // STEP 4: Check for existing vote to prevent duplicates
+      const { data: existingVote } = await supabase
+        .from('votes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('prompt_id', promptId)
+        .eq('left_image_id', currentPair.left.id)
+        .eq('right_image_id', currentPair.right.id)
+        .maybeSingle();
+
+      if (existingVote) {
+        console.log('⚠️ Vote already exists for this pair, skipping to next');
+        toast.info("Already voted on this pair");
+        moveToNextPair();
         return;
       }
 
@@ -483,49 +543,90 @@ export const ComparisonView = ({
 
   const handleResetVotes = async () => {
     try {
+      console.log('🔄 Starting vote reset...');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("You must be logged in");
         return;
       }
 
-      // Delete all votes for this user and prompt
+      // STEP 3: Use async/await properly and verify deletion
+      console.log('🗑️ Deleting votes...');
       const { error: votesError } = await supabase
         .from('votes')
         .delete()
         .eq('user_id', user.id)
         .eq('prompt_id', promptId);
 
-      if (votesError) throw votesError;
+      if (votesError) {
+        console.error('❌ Error deleting votes:', votesError);
+        throw votesError;
+      }
+
+      // Verify votes are actually deleted
+      console.log('✅ Verifying votes deletion...');
+      const { data: remainingVotes, error: verifyError } = await supabase
+        .from('votes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('prompt_id', promptId);
+
+      if (verifyError) {
+        console.error('❌ Error verifying deletion:', verifyError);
+        throw verifyError;
+      }
+
+      if (remainingVotes && remainingVotes.length > 0) {
+        console.error('❌ Votes still exist after deletion!', remainingVotes.length);
+        throw new Error('Failed to delete all votes');
+      }
+
+      console.log('✅ All votes deleted successfully');
 
       // Delete ranking if exists
+      console.log('🗑️ Deleting ranking...');
       const { error: rankingError } = await supabase
         .from('rankings')
         .delete()
         .eq('user_id', user.id)
         .eq('prompt_id', promptId);
 
-      if (rankingError && rankingError.code !== 'PGRST116') throw rankingError;
+      if (rankingError && rankingError.code !== 'PGRST116') {
+        console.error('❌ Error deleting ranking:', rankingError);
+        throw rankingError;
+      }
+      console.log('✅ Ranking deleted');
 
       // Delete/reset comparison session
+      console.log('🗑️ Deleting session...');
       const { error: sessionError } = await supabase
         .from('comparison_sessions')
         .delete()
         .eq('user_id', user.id)
         .eq('prompt_id', promptId);
 
-      if (sessionError && sessionError.code !== 'PGRST116') throw sessionError;
+      if (sessionError && sessionError.code !== 'PGRST116') {
+        console.error('❌ Error deleting session:', sessionError);
+        throw sessionError;
+      }
+      console.log('✅ Session deleted');
 
       // Remove from prompt completions
+      console.log('🗑️ Deleting completions...');
       const { error: completionError } = await supabase
         .from('prompt_completions')
         .delete()
         .eq('user_id', user.id)
         .eq('prompt_id', promptId);
 
-      if (completionError && completionError.code !== 'PGRST116') throw completionError;
+      if (completionError && completionError.code !== 'PGRST116') {
+        console.error('❌ Error deleting completion:', completionError);
+        throw completionError;
+      }
+      console.log('✅ Completion deleted');
 
-      // Reset component state without page reload
+      // Only reset state AFTER all database operations succeed
+      console.log('🔄 Resetting component state...');
       setVoteHistory([]);
       setCompletedPairs(new Set());
       setCurrentPairIndex(0);
@@ -535,8 +636,9 @@ export const ComparisonView = ({
       const pairs = generateAllPairs(images);
       setAllPairs(pairs);
       
-      // Create new session
-      const { data: newSession } = await supabase
+      // Create new session AFTER cleanup is complete
+      console.log('✨ Creating new session...');
+      const { data: newSession, error: newSessionError } = await supabase
         .from('comparison_sessions')
         .insert({
           user_id: user.id,
@@ -547,14 +649,21 @@ export const ComparisonView = ({
         .select()
         .single();
       
+      if (newSessionError) {
+        console.error('❌ Error creating new session:', newSessionError);
+        throw newSessionError;
+      }
+      
       if (newSession) {
         setSessionId(newSession.id);
+        console.log('✅ New session created:', newSession.id);
       }
       
       setIsLoading(false);
+      console.log('✅ Vote reset complete!');
       toast.success("Votes reset. Starting fresh!");
     } catch (error) {
-      console.error("Error resetting votes:", error);
+      console.error("❌ Error resetting votes:", error);
       toast.error("Failed to reset votes");
     }
   };
@@ -667,21 +776,21 @@ export const ComparisonView = ({
               onClick={() => handleSelection(currentPair.left)}
               variant="outline"
               size="lg"
-              className="glass-hover gap-3 min-w-[180px]"
+              className="glass-hover gap-3 min-w-[200px] hover:border-primary/50 transition-all"
               disabled={!imagesLoaded.left || !imagesLoaded.right}
             >
-              <kbd className="px-3 py-1.5 bg-muted rounded text-sm font-bold">←</kbd>
-              Left Wins
+              <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">←</kbd>
+              <span className="font-semibold">Left Wins</span>
             </Button>
             <Button
               onClick={() => handleSelection(currentPair.right)}
               variant="outline"
               size="lg"
-              className="glass-hover gap-3 min-w-[180px]"
+              className="glass-hover gap-3 min-w-[200px] hover:border-primary/50 transition-all"
               disabled={!imagesLoaded.left || !imagesLoaded.right}
             >
-              <kbd className="px-3 py-1.5 bg-muted rounded text-sm font-bold">→</kbd>
-              Right Wins
+              <span className="font-semibold">Right Wins</span>
+              <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">→</kbd>
             </Button>
           </div>
           

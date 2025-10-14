@@ -20,7 +20,7 @@ const tutorialSteps = [
   },
   {
     title: 'How to Vote',
-    description: 'Click on the image you prefer, or use keyboard shortcuts: Press A for left, S for tie, D for right.',
+    description: 'Click on the image you prefer, or use arrow keys on your keyboard: Press ← for left, → for right.',
     icon: '⌨️',
   },
   {
@@ -106,18 +106,17 @@ export default function OnboardingTutorial({ onComplete }: OnboardingTutorialPro
 
           {/* Keyboard shortcuts demo on step 3 */}
           {currentStep === 2 && (
-            <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
-              <div className="flex flex-col items-center gap-2">
-                <kbd className="px-3 py-2 bg-background border rounded text-sm font-mono">A</kbd>
-                <span className="text-xs text-muted-foreground">Vote Left</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <kbd className="px-3 py-2 bg-background border rounded text-sm font-mono">S</kbd>
-                <span className="text-xs text-muted-foreground">Mark as Tie</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <kbd className="px-3 py-2 bg-background border rounded text-sm font-mono">D</kbd>
-                <span className="text-xs text-muted-foreground">Vote Right</span>
+            <div className="space-y-3">
+              <p className="text-sm text-center font-medium text-muted-foreground">Keyboard Arrow Keys</p>
+              <div className="grid grid-cols-2 gap-6 p-6 bg-muted/50 rounded-lg">
+                <div className="flex flex-col items-center gap-3">
+                  <kbd className="px-4 py-3 bg-primary text-primary-foreground border-2 border-primary/20 rounded-lg text-2xl font-bold shadow-lg">←</kbd>
+                  <span className="text-sm font-medium">Vote Left</span>
+                </div>
+                <div className="flex flex-col items-center gap-3">
+                  <kbd className="px-4 py-3 bg-primary text-primary-foreground border-2 border-primary/20 rounded-lg text-2xl font-bold shadow-lg">→</kbd>
+                  <span className="text-sm font-medium">Vote Right</span>
+                </div>
               </div>
             </div>
           )}
