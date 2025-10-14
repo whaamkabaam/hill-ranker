@@ -560,8 +560,16 @@ export const ComparisonView = ({
 
       if (votesError) {
         console.error('❌ Error deleting votes:', votesError);
+        if (votesError.code === '42501') {
+          toast.error("Permission denied: Unable to delete votes. Please contact support.");
+        } else {
+          toast.error(`Failed to delete votes: ${votesError.message}`);
+        }
         throw votesError;
       }
+
+      // Add a small delay to ensure deletion completes
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Verify votes are actually deleted
       console.log('✅ Verifying votes deletion...');
