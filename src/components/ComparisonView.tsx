@@ -840,12 +840,15 @@ export const ComparisonView = ({
 
           {/* Challenger (Right Side) */}
           <div 
-            className={`flex-1 transition-all duration-500 ease-out ${
-              animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :           // Exit right when left wins
-              animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' :       // Shift to left when right wins
-              animationState === 'clearing-right' ? 'opacity-0' :                         // Hide immediately (no transform)
-              animationState === 'entering-challenger' ? 'translate-x-[120%] opacity-0' : // Position off-screen right
-              'translate-x-0 opacity-100'                                                  // Default: visible at right position
+            className={`flex-1 ${
+              animationState === 'clearing-right' ? 'transition-opacity duration-300' :
+              'transition-all duration-500 ease-out'
+            } ${
+              animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
+              animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' :
+              animationState === 'clearing-right' ? '-translate-x-[calc(100%+2rem)] opacity-0' :
+              animationState === 'entering-challenger' ? 'translate-x-[120%] opacity-0' :
+              'translate-x-0 opacity-100'
             }`}
           >
             {!imagesLoaded.right && (
