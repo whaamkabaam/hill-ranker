@@ -121,89 +121,45 @@ export default function QualityMetricsDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Aggregate Metrics */}
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle>Platform Quality Metrics</CardTitle>
-          <CardDescription>Overall voting quality across all users</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {metrics.map((metric) => (
-              <div key={metric.metric} className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="text-sm text-muted-foreground">{metric.metric}</p>
-                  <p className="text-2xl font-bold">{metric.value}</p>
-                </div>
-                {getStatusIcon(metric.status)}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* User Quality Table */}
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle>User Quality Analysis</CardTitle>
-          <CardDescription>Individual user voting patterns and quality flags</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead className="text-right">Consistency</TableHead>
-                <TableHead className="text-right">Certainty</TableHead>
-                <TableHead className="text-right">Avg Time (s)</TableHead>
-                <TableHead className="text-right">Violations</TableHead>
-                <TableHead className="text-right">Total Votes</TableHead>
-                <TableHead>Quality Flags</TableHead>
+    <Card className="glass-card">
+      <CardHeader>
+        <CardTitle>User Quality Analysis</CardTitle>
+        <CardDescription>Individual user voting patterns</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead className="text-right">Consistency</TableHead>
+              <TableHead className="text-right">Certainty</TableHead>
+              <TableHead className="text-right">Avg Time (s)</TableHead>
+              <TableHead className="text-right">Total Votes</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {userQuality.map((user) => (
+              <TableRow key={user.userId}>
+                <TableCell className="font-medium">
+                  {userNames.get(user.userId) || user.userEmail}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge variant={user.consistencyScore >= 70 ? 'default' : user.consistencyScore >= 50 ? 'secondary' : 'destructive'}>
+                    {user.consistencyScore}%
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">{user.voteCertainty}%</TableCell>
+                <TableCell className="text-right">
+                  <Badge variant={user.avgVoteTime >= 2 && user.avgVoteTime <= 30 ? 'default' : 'secondary'}>
+                    {user.avgVoteTime}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">{user.totalVotes}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {userQuality.map((user) => (
-                <TableRow key={user.userId}>
-                  <TableCell className="font-medium">
-                    {userNames.get(user.userId) || user.userEmail}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={user.consistencyScore >= 70 ? 'default' : user.consistencyScore >= 50 ? 'secondary' : 'destructive'}>
-                      {user.consistencyScore}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{user.voteCertainty}%</TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={user.avgVoteTime >= 2 && user.avgVoteTime <= 30 ? 'default' : 'secondary'}>
-                      {user.avgVoteTime}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={user.transitivityViolations === 0 ? 'default' : 'destructive'}>
-                      {user.transitivityViolations}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{user.totalVotes}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {user.qualityFlags.length === 0 ? (
-                        <Badge variant="outline">No flags</Badge>
-                      ) : (
-                        user.qualityFlags.map((flag) => (
-                          <Badge key={flag} variant="destructive" className="text-xs">
-                            {flag.replace(/_/g, ' ')}
-                          </Badge>
-                        ))
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
