@@ -28,7 +28,7 @@ interface ComparisonViewProps {
   onSkip?: () => void;
 }
 
-type AnimationState = 'idle' | 'left-wins' | 'right-wins';
+type AnimationState = 'idle' | 'left-wins' | 'right-wins' | 'right-wins-exit' | 'right-wins-promote' | 'right-wins-enter';
 
 // Utility: Calculate Elo ratings from votes
 const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => {
@@ -769,21 +769,39 @@ export const ComparisonView = ({
         } else {
           setChallenger(null);
         }
+        
+        // Reset to idle
+        setAnimationState('idle');
+        setPendingVote(false);
       } else {
-        // Right wins: Challenger becomes new champion
-        console.log('🎬 Right wins: Promoting challenger to champion position');
-        setChampion(challenger);
-        if (remainingImages.length > 0) {
-          setChallenger(remainingImages[0]);
-          setRemainingImages(prev => prev.slice(1));
-        } else {
-          setChallenger(null);
-        }
+        // Right wins: 3-stage animation sequence
+        console.log('🎬 Right wins: Starting 3-stage animation');
+        
+        // Stage 1: Exit left champion (300ms)
+        setAnimationState('right-wins-exit');
+        
+        setTimeout(() => {
+          // Stage 2: Promote right to left (300ms)
+          setAnimationState('right-wins-promote');
+          setChampion(challenger);
+          
+          setTimeout(() => {
+            // Stage 3: Enter new challenger (300ms)
+            setAnimationState('right-wins-enter');
+            if (remainingImages.length > 0) {
+              setChallenger(remainingImages[0]);
+              setRemainingImages(prev => prev.slice(1));
+            } else {
+              setChallenger(null);
+            }
+            
+            setTimeout(() => {
+              setAnimationState('idle');
+              setPendingVote(false);
+            }, 300);
+          }, 300);
+        }, 300);
       }
-      
-      // Reset to idle
-      setAnimationState('idle');
-      setPendingVote(false);
       
     } catch (error: any) {
       console.error("Error saving vote:", error);
@@ -1010,8 +1028,11 @@ export const ComparisonView = ({
         <div className="flex gap-8 items-start relative overflow-hidden">
           {/* Champion (Left Side) - Exits when right wins */}
           <div 
-            className={`flex-1 transition-all duration-500 ease-out ${
-              animationState === 'right-wins' ? '-translate-x-full opacity-0' : 'translate-x-0 opacity-100'
+            className={`flex-1 transition-all duration-300 ease-out ${
+              animationState === 'right-wins-exit' ? 'translate-x-[-120%] opacity-0' : 
+              animationState === 'right-wins-promote' ? 'translate-x-[-120%] opacity-0' :
+              animationState === 'right-wins-enter' ? 'translate-x-[-120%] opacity-0' :
+              'translate-x-0 opacity-100'
             }`}
           >
             {!imagesLoaded.left && (
@@ -1031,9 +1052,11 @@ export const ComparisonView = ({
 
           {/* Challenger (Right Side) - Exits right when left wins, slides left when right wins */}
           <div 
-            className={`flex-1 transition-all duration-500 ease-out ${
+            className={`flex-1 transition-all duration-300 ease-out ${
               animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
-              animationState === 'right-wins' ? '-translate-x-full opacity-0' :
+              animationState === 'right-wins-exit' ? 'translate-x-0 opacity-100' :
+              animationState === 'right-wins-promote' ? 'translate-x-[-100%] opacity-100' :
+              animationState === 'right-wins-enter' ? 'translate-x-[-100%] opacity-100' :
               'translate-x-0 opacity-100'
             }`}
           >
