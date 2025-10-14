@@ -44,6 +44,8 @@ const ImageRanker = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   // PHASE 3: Track whether prompt is actively being ranked
   const [isPromptInProgress, setIsPromptInProgress] = useState(true);
+  // Track if all prompts are completed
+  const [allPromptsCompleted, setAllPromptsCompleted] = useState(false);
 
   useEffect(() => {
     loadPrompts();
@@ -54,6 +56,32 @@ const ImageRanker = () => {
       loadImages(prompts[currentPromptIndex].id);
     }
   }, [currentPromptIndex, prompts]);
+
+  useEffect(() => {
+    checkAllPromptsCompleted();
+  }, [prompts, user?.id]);
+
+  const checkAllPromptsCompleted = async () => {
+    if (!user?.id || prompts.length === 0) return;
+    
+    try {
+      const { data: completed } = await supabase
+        .from('prompt_completions')
+        .select('prompt_id')
+        .eq('user_id', user.id);
+      
+      const completedIds = new Set(completed?.map(c => c.prompt_id) || []);
+      const allDone = prompts.every(p => completedIds.has(p.id));
+      
+      if (allDone) {
+        console.log('🎉 All prompts completed - auto-switching to progress tab');
+        setAllPromptsCompleted(true);
+        setActiveTab('progress');
+      }
+    } catch (error) {
+      console.error('Error checking prompt completion:', error);
+    }
+  };
 
   const loadPrompts = async () => {
     try {
@@ -150,7 +178,11 @@ const ImageRanker = () => {
         toast.success("Moving to next uncompleted prompt");
       } else {
         // All prompts completed
-        toast.success("🎉 All prompts completed!", { duration: 3000 });
+        console.log('🎉 All prompts completed - switching to progress tab');
+        setAllPromptsCompleted(true);
+        setActiveTab('progress');
+        toast.success("🎉 All prompts completed! Amazing work!", { duration: 5000 });
+        return;
       }
     } catch (error) {
       console.error("Error finding next prompt:", error);
@@ -194,10 +226,12 @@ const ImageRanker = () => {
       });
       
       if (allCompleted) {
+        console.log('🎉 All prompts completed - switching to progress tab');
+        setAllPromptsCompleted(true);
+        setActiveTab('progress');
         toast.success("🎉 All prompts completed! Amazing work!", {
           duration: 5000
         });
-        // Stay on current prompt (don't loop back)
         return;
       }
       
@@ -300,7 +334,18 @@ const ImageRanker = () => {
             </TabsList>
 
             <TabsContent value="ranking">
-              {isPromptInProgress ? (
+              {allPromptsCompleted ? (
+                <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+                  <h2 className="text-2xl font-bold">🎉 All Prompts Completed!</h2>
+                  <p className="text-muted-foreground">Great work! Check the Progress tab to see your results.</p>
+                  <Button 
+                    onClick={() => setActiveTab('progress')}
+                    className="mt-4"
+                  >
+                    View Progress
+                  </Button>
+                </div>
+              ) : isPromptInProgress ? (
                 <ComparisonView
                   key={currentPrompt.id}
                   promptId={currentPrompt.id}

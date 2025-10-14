@@ -385,15 +385,18 @@ export const ComparisonView = ({
         const existingRanking = await checkExistingRanking(user.id, promptId);
         
         if (existingRanking) {
-          console.log('✅ Prompt already completed, auto-skipping to next prompt');
+          console.log('✅ Prompt already completed, auto-skipping to next');
           setIsLoading(false);
-          // Auto-skip to next uncompleted prompt
-          toast.info("This prompt is already completed");
-          setTimeout(() => {
-            if (onSkip) {
+          
+          // Only auto-skip if onSkip is provided and safe to do so
+          if (onSkip) {
+            toast.info("This prompt is already completed");
+            setTimeout(() => {
               onSkip();
-            }
-          }, 500);
+            }, 500);
+          } else {
+            console.log('⚠️ No onSkip handler provided, staying on current prompt');
+          }
           return;
         }
 
