@@ -28,7 +28,7 @@ interface ComparisonViewProps {
   onSkip?: () => void;
 }
 
-type AnimationState = 'idle' | 'left-wins' | 'right-wins' | 'clearing-right' | 'entering-challenger';
+type AnimationState = 'idle' | 'left-wins' | 'right-wins';
 
 // Utility: Calculate Elo ratings from votes
 const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => {
@@ -296,8 +296,6 @@ export const ComparisonView = ({
   const [remainingImages, setRemainingImages] = useState<Image[]>([]);
   const [totalComparisons, setTotalComparisons] = useState(0);
   const [animationState, setAnimationState] = useState<AnimationState>('idle');
-  const [newChallengerMounting, setNewChallengerMounting] = useState(false);
-  const [championTransitioning, setChampionTransitioning] = useState(false);
   
   // Session state
   const [isLoading, setIsLoading] = useState(true);
@@ -482,8 +480,6 @@ export const ComparisonView = ({
     setVoteCache(new Set());
     setPendingVote(false);
     setAnimationState('idle');
-    setNewChallengerMounting(false);
-    setChampionTransitioning(false);
   };
 
   const handleTournamentComplete = async () => {
@@ -578,18 +574,6 @@ export const ComparisonView = ({
 
     // Block duplicate votes
     if (pendingVote || hasVotedOnPair(champion.id, challenger.id)) {
-      console.log('⏸️ Vote blocked:', {
-        pendingVote,
-        alreadyVoted: hasVotedOnPair(champion.id, challenger.id),
-        championId: champion.id,
-        challengerId: challenger.id,
-        cacheKey: getVotePairKey(champion.id, challenger.id),
-        cacheSize: voteCache.size,
-        cacheContents: Array.from(voteCache),
-        animationState,
-        championTransitioning,
-        newChallengerMounting
-      });
       return;
     }
 
@@ -608,7 +592,7 @@ export const ComparisonView = ({
 
       const isChampionWinner = winner.id === champion.id;
       
-      // Trigger animation
+      // Trigger exit animation
       setAnimationState(isChampionWinner ? 'left-wins' : 'right-wins');
 
       // Record vote (champion is always on left, challenger on right)
@@ -635,37 +619,25 @@ export const ComparisonView = ({
           .eq('id', sessionId);
       }
 
-      // Wait for animation to complete
+      // Wait for exit animation
       await new Promise(resolve => setTimeout(resolve, 600));
 
-      // Update images based on winner
       if (isChampionWinner) {
-        // Champion wins: stays on left, get new challenger
+        // Champion wins: right exits, get new challenger
+        console.log('🎬 Left wins: Exit animation (600ms)');
         if (remainingImages.length > 0) {
           setChallenger(remainingImages[0]);
           setRemainingImages(prev => prev.slice(1));
         } else {
-          // No more challengers - tournament complete
           setChallenger(null);
         }
-        
-        // Reset animation
-        setAnimationState('idle');
-        setPendingVote(false);
       } else {
-        // Challenger wins: Simplified animation
+        // Challenger wins: promote challenger to champion
         console.log('🎬 Right wins: Exit animation (600ms)');
-        // Exit animation already triggered by setAnimationState('right-wins')
-        // Already waited 600ms
-        
-        // Signal that champion is transitioning (prevent left side animation reset)
-        setChampionTransitioning(true);
-        
-        // Update champion immediately (old challenger becomes new champion on left)
         const oldChampionId = champion.id;
         setChampion(challenger);
         
-        // Clear vote cache entries where old champion was the left side
+        // Clear old champion's vote cache entries
         setVoteCache(prev => {
           const newCache = new Set(prev);
           prev.forEach(key => {
@@ -677,49 +649,29 @@ export const ComparisonView = ({
           return newCache;
         });
         
+        // Get new challenger
         if (remainingImages.length > 0) {
-          // Signal new challenger incoming
-          setNewChallengerMounting(true);
-          
-          // Mount new challenger
           setChallenger(remainingImages[0]);
           setRemainingImages(prev => prev.slice(1));
-          
-          // Small delay to ensure new image is mounted at initial position
-          await new Promise(resolve => setTimeout(resolve, 50));
-          
-          // Give browser time to paint the off-screen-right position
-          await new Promise(resolve => setTimeout(resolve, 50));
-          
-          // NOW trigger enter animation by removing the mounting flag
-          setNewChallengerMounting(false);
-          setAnimationState('idle');
-          setChampionTransitioning(false); // Now left side can animate normally again
-          setPendingVote(false); // Unlock immediately when state is ready
-          
-          // Wait for enter animation to complete
-          await new Promise(resolve => setTimeout(resolve, 500));
         } else {
-          // No more challengers - tournament complete
           setChallenger(null);
-          setAnimationState('idle');
-          setChampionTransitioning(false);
-          setPendingVote(false);
         }
       }
+      
+      // Reset to idle
+      setAnimationState('idle');
+      setPendingVote(false);
+      
     } catch (error: any) {
       console.error("Error saving vote:", error);
       
       if (error?.code === '23505' || error?.message?.includes('duplicate key')) {
-        // This pair was already voted on - continue gracefully
         console.log('⚠️ Vote already exists for this pair, continuing...');
         toast.info("You've already voted on this comparison");
       } else {
         toast.error(`Failed to save vote: ${error?.message || 'Unknown error'}`);
-        // Reset state so user can try again
         setAnimationState('idle');
         setPendingVote(false);
-        // Remove from cache since vote failed
         setVoteCache(prev => {
           const newCache = new Set(prev);
           newCache.delete(pairKey);
@@ -935,13 +887,8 @@ export const ComparisonView = ({
         <div className="flex gap-8 items-start relative overflow-hidden">
           {/* Champion (Left Side) */}
           <div 
-            className={`flex-1 ${
-              championTransitioning ? '' : 'transition-all duration-500 ease-out'
-            } ${
-              championTransitioning ? 'translate-x-0 opacity-100' :
+            className={`flex-1 transition-all duration-500 ease-out ${
               animationState === 'right-wins' ? '-translate-x-[120%] opacity-0' : 
-              animationState === 'clearing-right' ? '-translate-x-[120%] opacity-0' :
-              animationState === 'entering-challenger' ? 'translate-x-0 opacity-100' :
               'translate-x-0 opacity-100'
             }`}
           >
@@ -963,10 +910,7 @@ export const ComparisonView = ({
           {/* Challenger (Right Side) */}
           <div 
             className={`flex-1 transition-all duration-500 ease-out ${
-              championTransitioning ? 'opacity-0 pointer-events-none' :
               animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
-              animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' :
-              newChallengerMounting ? '-translate-x-[120%]' :
               'translate-x-0 opacity-100'
             }`}
           >

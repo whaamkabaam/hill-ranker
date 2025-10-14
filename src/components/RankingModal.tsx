@@ -251,14 +251,16 @@ export const RankingModal = ({
     }
   }, [open, rankings.length, initialWinners]);
 
-  // Sync state when winners prop changes (but only if it's NEW data)
+  // Sync state when winners prop changes (but only if it's NEW data and not submitted)
   useEffect(() => {
     if (open && winners && winners.length >= 3 && !hasSubmitted) {
       // Check if this is actually NEW data (different from what we have)
       const isDifferentData = JSON.stringify(winners.map(w => w.id)) !== 
                              JSON.stringify(initialWinners.map(w => w.id));
       
-      if (isDifferentData || initialWinners.length === 0) {
+      // Only sync if this is NEW data and we haven't submitted yet
+      if ((isDifferentData && initialWinners.length === 0) || 
+          (isDifferentData && !hasSubmitted)) {
         console.log('✅ Syncing rankings state with NEW winners:', winners);
         setInitialWinners(winners); // Preserve the data internally
         setRankings(winners.slice(0, 3));
@@ -288,12 +290,13 @@ export const RankingModal = ({
         loadQualityMetrics();
       }
     }
-  }, [open, winners, hasSubmitted]);
+  }, [open, winners, hasSubmitted, initialWinners]);
 
   // Reset submission guard when modal closes
   useEffect(() => {
     if (!open) {
-      setHasSubmitted(false);
+      // Reset submission guard after a delay when modal fully closes
+      setTimeout(() => setHasSubmitted(false), 500);
     }
   }, [open]);
 

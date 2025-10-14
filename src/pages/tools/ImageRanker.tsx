@@ -127,7 +127,6 @@ const ImageRanker = () => {
 
   const handleRankingComplete = async () => {
     console.log('✅ Ranking complete, closing modal');
-    // Just close the modal - don't clear winners here
     setShowRanking(false);
     
     // Check for next uncompleted prompt
@@ -141,30 +140,38 @@ const ImageRanker = () => {
         .eq('user_id', user.id);
 
       const completedIds = new Set(completed?.map(c => c.prompt_id) || []);
+      
+      // Check if ALL prompts are now completed
+      const allCompleted = prompts.every(p => completedIds.has(p.id));
+      
+      console.log('📊 Prompt completion status:', {
+        currentPrompt: prompts[currentPromptIndex].text,
+        completedIds: Array.from(completedIds),
+        allCompleted,
+        totalPrompts: prompts.length
+      });
+      
+      if (allCompleted) {
+        toast.success("🎉 All prompts completed! Amazing work!", {
+          duration: 5000
+        });
+        // Stay on current prompt (don't loop back)
+        return;
+      }
+      
+      // Find next uncompleted prompt
       const nextPrompt = prompts.find(p => !completedIds.has(p.id));
 
       if (nextPrompt) {
         const nextIndex = prompts.findIndex(p => p.id === nextPrompt.id);
+        console.log('📊 Moving to next prompt:', { nextIndex, nextPrompt: nextPrompt.text });
         setCurrentPromptIndex(nextIndex);
         setStartTime(Date.now());
         toast.success("Moving to next uncompleted prompt!");
-      } else {
-        toast.success("All prompts completed! 🎉");
-        setCurrentPromptIndex(0);
-        setStartTime(Date.now());
       }
     } catch (error) {
       console.error("Error finding next prompt:", error);
-      // Fallback to sequential
-      if (currentPromptIndex < prompts.length - 1) {
-        setCurrentPromptIndex(currentPromptIndex + 1);
-        setStartTime(Date.now());
-        toast.success("Moving to next prompt!");
-      } else {
-        toast.success("All prompts completed! 🎉");
-        setCurrentPromptIndex(0);
-        setStartTime(Date.now());
-      }
+      toast.error("Error loading next prompt");
     }
   };
 
