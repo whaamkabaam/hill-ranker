@@ -736,15 +736,25 @@ export const ComparisonView = ({
       // Wait for exit animation
       await new Promise(resolve => setTimeout(resolve, 600));
 
-      // Both cases: right side exits, get new challenger
-      // Left image (champion) always stays in place
-      console.log(`🎬 ${isChampionWinner ? 'Left' : 'Right'} wins: Exit animation (600ms)`);
-      
-      if (remainingImages.length > 0) {
-        setChallenger(remainingImages[0]);
-        setRemainingImages(prev => prev.slice(1));
+      if (isChampionWinner) {
+        // Left wins: Champion defended throne, get new challenger
+        console.log('🎬 Left wins: Champion defends, getting new challenger');
+        if (remainingImages.length > 0) {
+          setChallenger(remainingImages[0]);
+          setRemainingImages(prev => prev.slice(1));
+        } else {
+          setChallenger(null);
+        }
       } else {
-        setChallenger(null);
+        // Right wins: Challenger becomes new champion
+        console.log('🎬 Right wins: Promoting challenger to champion position');
+        setChampion(challenger);
+        if (remainingImages.length > 0) {
+          setChallenger(remainingImages[0]);
+          setRemainingImages(prev => prev.slice(1));
+        } else {
+          setChallenger(null);
+        }
       }
       
       // Reset to idle
@@ -974,9 +984,11 @@ export const ComparisonView = ({
 
         {/* Comparison */}
         <div className="flex gap-8 items-start relative overflow-hidden">
-          {/* Champion (Left Side) - Always static */}
+          {/* Champion (Left Side) - Exits when right wins */}
           <div 
-            className="flex-1 transition-all duration-500 ease-out translate-x-0 opacity-100"
+            className={`flex-1 transition-all duration-500 ease-out ${
+              animationState === 'right-wins' ? '-translate-x-full opacity-0' : 'translate-x-0 opacity-100'
+            }`}
           >
             {!imagesLoaded.left && (
               <div className="absolute inset-0 z-10 pointer-events-none">
@@ -993,10 +1005,11 @@ export const ComparisonView = ({
             />
           </div>
 
-          {/* Challenger (Right Side) - Animates out on both wins */}
+          {/* Challenger (Right Side) - Exits right when left wins, slides left when right wins */}
           <div 
             className={`flex-1 transition-all duration-500 ease-out ${
-              animationState === 'left-wins' || animationState === 'right-wins' ? 'translate-x-[120%] opacity-0' :
+              animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
+              animationState === 'right-wins' ? '-translate-x-full opacity-0' :
               'translate-x-0 opacity-100'
             }`}
           >
