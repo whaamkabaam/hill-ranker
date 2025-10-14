@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ImageCard } from "./ImageCard";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, RotateCcw, Trash2 } from "lucide-react";
@@ -548,6 +549,21 @@ export const ComparisonView = ({
         {/* Comparison Tips */}
         <ComparisonTips />
 
+        {/* Blind Mode Notice */}
+        <Card className="p-4 bg-primary/10 border-primary/30">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20">
+              🕶️
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-sm">Blind Testing Mode Active</p>
+              <p className="text-xs text-muted-foreground">
+                Model names are hidden to ensure unbiased voting. They'll be revealed after you complete all comparisons.
+              </p>
+            </div>
+          </div>
+        </Card>
+
         {/* Header with Progress */}
         <div className="glass rounded-xl p-6 space-y-4">
           <div className="text-center">
@@ -602,6 +618,7 @@ export const ComparisonView = ({
               side="left"
               isKing={false}
               onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
+              blindMode={true}
             />
           </div>
 
@@ -615,6 +632,7 @@ export const ComparisonView = ({
               side="right"
               isKing={false}
               onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
+              blindMode={true}
             />
           </div>
         </div>

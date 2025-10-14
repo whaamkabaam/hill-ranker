@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import { ArrowLeft, BarChart3, Users, TrendingUp, Grid3x3 } from 'lucide-react';
 import ModelPerformanceChart from '@/components/admin/ModelPerformanceChart';
 import QualityMetricsDashboard from '@/components/admin/QualityMetricsDashboard';
-import VotingHeatmap from '@/components/admin/VotingHeatmap';
 
 export default function Analytics() {
   const navigate = useNavigate();
@@ -70,9 +69,9 @@ export default function Analytics() {
               <Users className="h-4 w-4" />
               Quality Metrics
             </TabsTrigger>
-            <TabsTrigger value="heatmap" className="gap-2">
+            <TabsTrigger value="heatmap" className="gap-2" onClick={() => navigate('/admin/pairwise-matrix')}>
               <Grid3x3 className="h-4 w-4" />
-              Voting Heatmap
+              Pairwise Matrix
             </TabsTrigger>
           </TabsList>
 
@@ -82,10 +81,6 @@ export default function Analytics() {
 
           <TabsContent value="quality" className="space-y-6">
             <QualityMetricsDashboard />
-          </TabsContent>
-
-          <TabsContent value="heatmap" className="space-y-6">
-            <VotingHeatmap />
           </TabsContent>
         </Tabs>
       </div>

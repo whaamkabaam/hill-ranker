@@ -7,9 +7,10 @@ interface ImageCardProps {
   side: "left" | "right";
   isKing?: boolean;
   onImageLoad?: () => void;
+  blindMode?: boolean; // Hide model name during comparison
 }
 
-export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad }: ImageCardProps) => {
+export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blindMode = false }: ImageCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -50,10 +51,21 @@ export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad }: Im
       </div>
       
       <div className="text-center">
-        <p className="text-lg font-medium">{modelName}</p>
-        <p className="text-sm text-muted-foreground">
-          Press {side === "left" ? "A" : "L"} to select
-        </p>
+        {blindMode ? (
+          <>
+            <p className="text-lg font-medium">Image {side === "left" ? "A" : "B"}</p>
+            <p className="text-sm text-muted-foreground">
+              Model name hidden (blind test)
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-lg font-medium">{modelName}</p>
+            <p className="text-sm text-muted-foreground">
+              Press {side === "left" ? "A" : "L"} to select
+            </p>
+          </>
+        )}
       </div>
     </motion.div>
   );

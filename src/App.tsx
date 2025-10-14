@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import AdminPanel from "./pages/admin/AdminPanel";
 import Analytics from "./pages/admin/Analytics";
+import PairwiseMatrix from "./pages/admin/PairwiseMatrix";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,11 @@ const App = () => (
             <Route path="/admin/analytics" element={
               <ProtectedRoute>
                 <Analytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/pairwise-matrix" element={
+              <ProtectedRoute>
+                <PairwiseMatrix />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -361,9 +361,9 @@ export const RankingModal = ({
     <Dialog open={open}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto glass">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Rank Top 3 & Rate Realism</DialogTitle>
+          <DialogTitle className="text-2xl">🎉 Ranking Complete - Models Revealed!</DialogTitle>
           <p className="text-sm text-muted-foreground mt-2">
-            These were the top 3 based on your votes. Drag to reorder if you'd like to adjust your ranking.
+            These were the top 3 based on your blind votes. Now you can see which models you preferred. Drag to reorder if you'd like to adjust.
           </p>
         </DialogHeader>
 
