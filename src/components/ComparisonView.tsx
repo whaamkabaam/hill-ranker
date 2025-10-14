@@ -759,6 +759,7 @@ export const ComparisonView = ({
       if (isChampionWinner) {
         // Champion wins: Only replace the right side
         setAnimationState('replacing-right');
+        setImagesLoaded(prev => ({ ...prev, right: false }));
         
         setTimeout(() => {
           if (remainingImages.length > 0) {
@@ -773,6 +774,7 @@ export const ComparisonView = ({
       } else {
         // Challenger wins: Winner STAYS on right, replace LEFT side
         setAnimationState('replacing-left');
+        setImagesLoaded(prev => ({ ...prev, left: false }));
         
         setTimeout(() => {
           // The challenger becomes the new champion (but we swap display positions)
