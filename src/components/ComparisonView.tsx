@@ -28,7 +28,7 @@ interface ComparisonViewProps {
   onSkip?: () => void;
 }
 
-type AnimationState = 'idle' | 'left-wins' | 'right-wins' | 'entering-challenger';
+type AnimationState = 'idle' | 'left-wins' | 'right-wins' | 'clearing-right' | 'entering-challenger';
 
 // Utility: Calculate Elo ratings from votes
 const calculateEloRatings = (images: Image[], votes: any[]): ImageWithWins[] => {
@@ -409,26 +409,45 @@ export const ComparisonView = ({
         // Reset animation
         setAnimationState('idle');
       } else {
-        // Challenger wins: becomes new champion
+        // Challenger wins: 4-phase animation
+        console.log('🎬 Animation Phase 1: Exit animation (right-wins) - 600ms');
+        // Exit animation already triggered by setAnimationState('right-wins') at line 369
+        // Already waited 600ms at line 396
+        
+        // PHASE 2: Clear right side and update champion
+        console.log('🎬 Animation Phase 2: Clearing right side');
+        setAnimationState('clearing-right');
+        
+        // Small delay to ensure React processes the state change
+        await new Promise(resolve => setTimeout(resolve, 16)); // 1 frame
+        
+        // Now update the champion (left side gets the old challenger)
+        console.log('🎬 Animation Phase 3: Promoting challenger to champion');
         setChampion(challenger);
         
         if (remainingImages.length > 0) {
-          // Set animation to "entering" state BEFORE setting new challenger
+          // PHASE 3: Prepare new challenger entry
+          console.log('🎬 Animation Phase 4: Preparing new challenger');
           setAnimationState('entering-challenger');
           
-          // Small delay to ensure DOM updates
-          await new Promise(resolve => setTimeout(resolve, 50));
+          // Small delay to ensure DOM updates with new champion
+          await new Promise(resolve => setTimeout(resolve, 16)); // 1 frame
           
-          // Now set the new challenger
+          // Set new challenger (will be positioned off-screen)
           setChallenger(remainingImages[0]);
           setRemainingImages(prev => prev.slice(1));
           
-          // Wait for enter animation
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Small delay to ensure new image is mounted
+          await new Promise(resolve => setTimeout(resolve, 50));
           
-          // Reset to idle
+          // PHASE 4: Trigger enter animation
+          console.log('🎬 Animation Phase 5: Enter animation (idle) - 500ms');
           setAnimationState('idle');
+          
+          // Wait for enter animation to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
         } else {
+          // No more challengers - tournament complete
           setChallenger(null);
           setAnimationState('idle');
         }
@@ -598,6 +617,13 @@ export const ComparisonView = ({
             showConfetti={!challenger && remainingImages.length === 0}
           />
 
+          {/* DEBUG: Show animation state */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="fixed top-4 right-4 bg-black/80 text-white px-4 py-2 rounded text-sm font-mono z-50">
+              State: {animationState}
+            </div>
+          )}
+
           {/* Reset Button */}
           {totalComparisons > 0 && (
             <div className="flex justify-center pt-2">
@@ -632,7 +658,9 @@ export const ComparisonView = ({
           {/* Champion (Left Side) */}
           <div 
             className={`flex-1 transition-all duration-500 ease-out ${
-              animationState === 'right-wins' ? '-translate-x-[120%] opacity-0' : 'translate-x-0 opacity-100'
+              animationState === 'right-wins' ? '-translate-x-[120%] opacity-0' : 
+              animationState === 'clearing-right' ? '-translate-x-[120%] opacity-0' :  // Stay hidden during clear
+              'translate-x-0 opacity-100'  // Visible in all other states
             }`}
           >
             {!imagesLoaded.left && (
@@ -653,10 +681,11 @@ export const ComparisonView = ({
           {/* Challenger (Right Side) */}
           <div 
             className={`flex-1 transition-all duration-500 ease-out ${
-              animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' : 
-              animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' : 
-              animationState === 'entering-challenger' ? 'translate-x-[120%] opacity-0' :
-              'translate-x-0 opacity-100'
+              animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :           // Exit right when left wins
+              animationState === 'right-wins' ? '-translate-x-[calc(100%+2rem)]' :       // Shift to left when right wins
+              animationState === 'clearing-right' ? 'opacity-0' :                         // Hide immediately (no transform)
+              animationState === 'entering-challenger' ? 'translate-x-[120%] opacity-0' : // Position off-screen right
+              'translate-x-0 opacity-100'                                                  // Default: visible at right position
             }`}
           >
             {!imagesLoaded.right && (
