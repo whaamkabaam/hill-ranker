@@ -64,6 +64,16 @@ const ImageRanker = () => {
     checkAllPromptsCompleted();
     checkUserParticipation();
   }, [prompts, user?.id]);
+  
+  // Force modal to show when winners are populated
+  useEffect(() => {
+    if (winners.length >= 3 && !showRanking) {
+      console.log('🎯 Winners populated, ensuring modal shows');
+      setTimeout(() => {
+        setShowRanking(true);
+      }, 100);
+    }
+  }, [winners, showRanking]);
   useEffect(() => {
     if (activeTab === 'progress') {
       checkUserParticipation();

@@ -356,9 +356,6 @@ export const ComparisonView = ({
   const [totalComparisons, setTotalComparisons] = useState(0);
   const [animationState, setAnimationState] = useState<AnimationState>('idle');
   
-  // Track which image is the actual champion (by ID, not position)
-  const [championId, setChampionId] = useState<string | null>(null);
-  
   // Image gallery state for preview navigation
   const [previewImageIndex, setPreviewImageIndex] = useState<number>(0);
   
@@ -524,7 +521,6 @@ export const ComparisonView = ({
           setChampion(currentChamp);
           setChallenger(unused.length > 0 ? unused[0] : null);
           setRemainingImages(unused.slice(1));
-          setChampionId(currentChamp.id);
           setTotalComparisons(existingVotes.length);
           
           toast.info(`Resuming: ${existingVotes.length} comparisons completed`);
@@ -533,7 +529,6 @@ export const ComparisonView = ({
           setChampion(disambiguatedImages[0]);
           setChallenger(disambiguatedImages[1]);
           setRemainingImages(disambiguatedImages.slice(2));
-          setChampionId(disambiguatedImages[0].id);
           setTotalComparisons(0);
         }
 
@@ -848,7 +843,7 @@ export const ComparisonView = ({
             voteId: voteData.id,
             championBefore: champion,
             challengerBefore: challenger,
-            championIdBefore: championId,
+            championIdBefore: null, // Not needed anymore
             winner: winner,
             remainingBefore: [...remainingImages],
             timestamp: Date.now(),
@@ -870,7 +865,7 @@ export const ComparisonView = ({
       // --- End of database operations ---
 
       if (isChampionWinner) {
-        // Champion wins: Only replace the right side, championId stays the same
+        // Champion wins: Keep champion on LEFT, bring new challenger to RIGHT
         setAnimationState('replacing-right');
         setImagesLoaded(prev => ({ ...prev, right: false }));
         
@@ -885,27 +880,21 @@ export const ComparisonView = ({
           setPendingVote(false);
         }, animationTime);
       } else {
-        // Challenger wins: Winner STAYS on right, replace LEFT side
+        // Challenger wins: Move winner to LEFT (champion position), bring new image to RIGHT (challenger position)
         setAnimationState('replacing-left');
         setImagesLoaded(prev => ({ ...prev, left: false }));
         
         setTimeout(() => {
-          // Update championId to the challenger (new champion) - moved inside setTimeout for sync
-          setChampionId(challenger.id);
+          // Winner moves to champion position (left)
+          setChampion(challenger);
           
-          // The challenger becomes the new champion (but we swap display positions)
-          const newChampion = challenger;
-          
-          // Left side gets a new challenger
+          // New image comes to challenger position (right)
           if (remainingImages.length > 0) {
-            setChampion(remainingImages[0]);
+            setChallenger(remainingImages[0]);
             setRemainingImages(prev => prev.slice(1));
           } else {
-            setChampion(null);
+            setChallenger(null);
           }
-          
-          // Right side keeps the winner as challenger (but it's really the champion now)
-          setChallenger(newChampion);
           
           setAnimationState('idle');
           setPendingVote(false);
@@ -953,7 +942,6 @@ export const ComparisonView = ({
       setChampion(lastVote.championBefore);
       setChallenger(lastVote.challengerBefore);
       setRemainingImages(lastVote.remainingBefore);
-      setChampionId(lastVote.championIdBefore);
       setTotalComparisons(prev => prev - 1);
 
       // 3. Remove from vote cache and presented pairs
@@ -1099,7 +1087,6 @@ export const ComparisonView = ({
       setChampion(disambiguatedImages[0]);
       setChallenger(disambiguatedImages[1]);
       setRemainingImages(disambiguatedImages.slice(2));
-      setChampionId(disambiguatedImages[0].id);
       
       // Create new session
       console.log('✨ Creating new session...');
@@ -1228,7 +1215,7 @@ export const ComparisonView = ({
                 imageUrl={champion.image_url}
                 modelName={champion.model_name}
                 side="left"
-                isKing={champion.id === championId}
+                isKing={true}
                 onImageLoad={() => setImagesLoaded(prev => ({ ...prev, left: true }))}
                 blindMode={true}
                 allImages={champion && challenger ? [
@@ -1261,7 +1248,7 @@ export const ComparisonView = ({
                 imageUrl={challenger.image_url}
                 modelName={challenger.model_name}
                 side="right"
-                isKing={challenger.id === championId}
+                isKing={false}
                 onImageLoad={() => setImagesLoaded(prev => ({ ...prev, right: true }))}
                 blindMode={true}
                 allImages={champion && challenger ? [
@@ -1294,7 +1281,7 @@ export const ComparisonView = ({
               }
             >
               <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">←</kbd>
-              <span className="font-semibold">{champion?.id === championId ? "Champion Wins" : "Challenger Wins"}</span>
+              <span className="font-semibold">Champion Wins</span>
             </Button>
             <Button
               onClick={() => handleSelection(challenger)}
@@ -1309,7 +1296,7 @@ export const ComparisonView = ({
                 hasVotedOnPair(champion?.id || '', challenger?.id || '')
               }
             >
-              <span className="font-semibold">{challenger?.id === championId ? "Champion Wins" : "Challenger Wins"}</span>
+              <span className="font-semibold">Challenger Wins</span>
               <kbd className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-lg font-bold shadow-md hover:scale-110 transition-transform">→</kbd>
             </Button>
           </div>
