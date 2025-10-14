@@ -515,6 +515,7 @@ export const ComparisonView = ({
           setChampion(currentChamp);
           setChallenger(unused.length > 0 ? unused[0] : null);
           setRemainingImages(unused.slice(1));
+          setChampionId(currentChamp.id);
           setTotalComparisons(existingVotes.length);
           
           toast.info(`Resuming: ${existingVotes.length} comparisons completed`);
@@ -523,6 +524,7 @@ export const ComparisonView = ({
           setChampion(disambiguatedImages[0]);
           setChallenger(disambiguatedImages[1]);
           setRemainingImages(disambiguatedImages.slice(2));
+          setChampionId(disambiguatedImages[0].id);
           setTotalComparisons(0);
         }
 
@@ -857,7 +859,7 @@ export const ComparisonView = ({
       // --- End of database operations ---
 
       if (isChampionWinner) {
-        // Champion wins: Only replace the right side
+        // Champion wins: Only replace the right side, championId stays the same
         setAnimationState('replacing-right');
         setImagesLoaded(prev => ({ ...prev, right: false }));
         
