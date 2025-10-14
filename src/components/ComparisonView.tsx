@@ -202,6 +202,40 @@ const getCommonOpponentScore = (
   return aAdvantage;
 };
 
+// Helper function to safely check for existing ranking with retry logic
+const checkExistingRanking = async (userId: string, promptId: string, retries = 2): Promise<any | null> => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const { data, error } = await supabase
+        .from('rankings')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('prompt_id', promptId)
+        .maybeSingle();
+      
+      if (error) {
+        console.warn(`⚠️ Ranking check attempt ${i + 1}/${retries} failed:`, error);
+        if (i === retries - 1) {
+          console.log('⚠️ All ranking check attempts failed, assuming no ranking exists');
+          return null; // Give up, assume no ranking
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait before retry
+        continue;
+      }
+      
+      return data;
+    } catch (err) {
+      console.warn(`⚠️ Ranking check exception on attempt ${i + 1}/${retries}:`, err);
+      if (i === retries - 1) {
+        console.log('⚠️ All ranking check attempts failed with exception, assuming no ranking exists');
+        return null;
+      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+  return null;
+};
+
 const resolveRankingsWithCycles = (
   rankedImages: ImageWithWins[],
   votes: any[]
@@ -347,12 +381,7 @@ export const ComparisonView = ({
         }
 
         // PHASE 6: Check if prompt is already completed
-        const { data: existingRanking } = await supabase
-          .from('rankings')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('prompt_id', promptId)
-          .maybeSingle();
+        const existingRanking = await checkExistingRanking(user.id, promptId);
         
         if (existingRanking) {
           console.log('✅ Prompt already completed, not initializing tournament');
@@ -539,12 +568,7 @@ export const ComparisonView = ({
       }
 
       // PHASE 0: Check if user has already ranked this prompt
-      const { data: existingRanking } = await supabase
-        .from('rankings')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('prompt_id', promptId)
-        .maybeSingle();
+      const existingRanking = await checkExistingRanking(user.id, promptId);
       
       if (existingRanking) {
         console.log('✅ User has already ranked this prompt, skipping tournament');
