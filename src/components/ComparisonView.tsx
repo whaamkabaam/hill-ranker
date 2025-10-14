@@ -481,9 +481,9 @@ export const ComparisonView = ({
     }
   };
 
-  // Helper: Create unique key for vote pairs (always sorted)
-  const getVotePairKey = (img1Id: string, img2Id: string): string => {
-    return [img1Id, img2Id].sort().join('|');
+  // Helper: Create unique key for vote pairs (position matters in King-of-the-Hill)
+  const getVotePairKey = (championId: string, challengerId: string): string => {
+    return `${championId}|${challengerId}`;
   };
 
   // Helper: Check if already voted on this pair
@@ -497,7 +497,15 @@ export const ComparisonView = ({
 
     // Block duplicate votes
     if (pendingVote || hasVotedOnPair(champion.id, challenger.id)) {
-      console.log('⏸️ Vote blocked: Already processing or voted on this pair');
+      console.log('⏸️ Vote blocked:', {
+        pendingVote,
+        alreadyVoted: hasVotedOnPair(champion.id, challenger.id),
+        championId: champion.id,
+        challengerId: challenger.id,
+        cacheKey: getVotePairKey(champion.id, challenger.id),
+        cacheSize: voteCache.size,
+        cacheContents: Array.from(voteCache)
+      });
       return;
     }
 
@@ -567,7 +575,20 @@ export const ComparisonView = ({
         // Already waited 600ms
         
         // Update champion immediately (old challenger becomes new champion on left)
+        const oldChampionId = champion.id;
         setChampion(challenger);
+        
+        // Clear vote cache entries where old champion was the left side
+        setVoteCache(prev => {
+          const newCache = new Set(prev);
+          prev.forEach(key => {
+            const [leftId] = key.split('|');
+            if (leftId === oldChampionId) {
+              newCache.delete(key);
+            }
+          });
+          return newCache;
+        });
         
         if (remainingImages.length > 0) {
           // Signal new challenger incoming
@@ -583,6 +604,7 @@ export const ComparisonView = ({
           // Trigger enter animation
           setAnimationState('idle');
           setNewChallengerMounting(false);
+          setPendingVote(false); // Unlock immediately when state is ready
           
           // Wait for enter animation to complete
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -590,9 +612,8 @@ export const ComparisonView = ({
           // No more challengers - tournament complete
           setChallenger(null);
           setAnimationState('idle');
+          setPendingVote(false);
         }
-        
-        setPendingVote(false);
       }
     } catch (error: any) {
       console.error("Error saving vote:", error);
