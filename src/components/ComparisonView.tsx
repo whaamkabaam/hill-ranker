@@ -306,6 +306,9 @@ export const ComparisonView = ({
   const [pendingVote, setPendingVote] = useState<boolean>(false);
   const [voteCache, setVoteCache] = useState<Set<string>>(new Set());
   
+  // PHASE 2: Add debounce mechanism
+  const [isTournamentCompleting, setIsTournamentCompleting] = useState(false);
+  
   const estimatedTotal = Math.ceil(images.length * 2.5);
 
   // Initialize King-of-the-Hill tournament
@@ -320,6 +323,20 @@ export const ComparisonView = ({
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        // PHASE 6: Check if prompt is already completed
+        const { data: existingRanking } = await supabase
+          .from('rankings')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('prompt_id', promptId)
+          .single();
+        
+        if (existingRanking) {
+          console.log('✅ Prompt already completed, not initializing tournament');
           setIsLoading(false);
           return;
         }
@@ -417,14 +434,17 @@ export const ComparisonView = ({
 
   // Check for tournament completion
   useEffect(() => {
-    if (isLoading || !champion) return;
+    if (isLoading || !champion || isTournamentCompleting) return;
 
     // Tournament complete when no more challengers
     if (!challenger && remainingImages.length === 0 && totalComparisons > 0) {
       console.log('🏆 Tournament complete! Champion:', champion.model_name);
-      handleTournamentComplete();
+      setIsTournamentCompleting(true);
+      handleTournamentComplete().finally(() => {
+        setTimeout(() => setIsTournamentCompleting(false), 1000);
+      });
     }
-  }, [challenger, remainingImages, isLoading, champion, totalComparisons]);
+  }, [challenger, remainingImages, isLoading, champion, totalComparisons, isTournamentCompleting]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -488,6 +508,19 @@ export const ComparisonView = ({
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // PHASE 0: Check if user has already ranked this prompt
+      const { data: existingRanking } = await supabase
+        .from('rankings')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('prompt_id', promptId)
+        .single();
+      
+      if (existingRanking) {
+        console.log('✅ User has already ranked this prompt, skipping tournament');
+        return;
+      }
 
       const { data: allVotes } = await supabase
         .from('votes')

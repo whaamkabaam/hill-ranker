@@ -673,7 +673,11 @@ export const RankingModal = ({
 
       toast.success("Rankings saved successfully!");
       setHasSubmitted(true);
-      onComplete();
+      
+      // PHASE 5: Add delay before closing modal
+      setTimeout(() => {
+        onComplete();
+      }, 500);
     } catch (error: any) {
       console.error("Error saving rankings:", error);
       
@@ -831,7 +835,14 @@ export const RankingModal = ({
           className="w-full mt-6"
           size="lg"
         >
-          {submitting ? "Saving..." : "Submit Rankings"}
+          {submitting ? (
+            <span className="flex items-center gap-2">
+              <span className="animate-spin">⏳</span>
+              Saving rankings...
+            </span>
+          ) : (
+            "Submit Rankings"
+          )}
         </Button>
       </DialogContent>
     </Dialog>

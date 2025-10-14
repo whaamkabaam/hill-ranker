@@ -42,6 +42,8 @@ const ImageRanker = () => {
   const [startTime, setStartTime] = useState(Date.now());
   const [activeTab, setActiveTab] = useState<string>("ranking");
   const [showOnboarding, setShowOnboarding] = useState(false);
+  // PHASE 3: Track whether prompt is actively being ranked
+  const [isPromptInProgress, setIsPromptInProgress] = useState(true);
 
   useEffect(() => {
     loadPrompts();
@@ -105,6 +107,7 @@ const ImageRanker = () => {
     console.log('✅ Setting winners and showing ranking modal');
     setWinners(winnerImages);
     setShowRanking(true);
+    setIsPromptInProgress(false); // PHASE 3: Stop tournament
     setStartTime(Date.now());
     console.log('✅ State updates queued');
   };
@@ -131,6 +134,8 @@ const ImageRanker = () => {
   const handleRankingComplete = async () => {
     console.log('✅ Ranking complete, closing modal');
     setShowRanking(false);
+    setWinners([]); // PHASE 1: Clear winners immediately
+    setIsPromptInProgress(true); // PHASE 3: Ready for next prompt
     
     // Check for next uncompleted prompt
     try {
@@ -261,15 +266,21 @@ const ImageRanker = () => {
             </TabsList>
 
             <TabsContent value="ranking">
-              <ComparisonView
-                key={currentPrompt.id}
-                promptId={currentPrompt.id}
-                promptText={currentPrompt.text}
-                images={images}
-                userEmail={user?.email || ''}
-                onComplete={handleComparisonComplete}
-                onSkip={handleSkip}
-              />
+              {isPromptInProgress ? (
+                <ComparisonView
+                  key={currentPrompt.id}
+                  promptId={currentPrompt.id}
+                  promptText={currentPrompt.text}
+                  images={images}
+                  userEmail={user?.email || ''}
+                  onComplete={handleComparisonComplete}
+                  onSkip={handleSkip}
+                />
+              ) : (
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <p className="text-muted-foreground">Waiting for ranking submission...</p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="progress">
