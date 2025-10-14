@@ -124,8 +124,8 @@ export const ComparisonView = ({
   // Initialize pairs and check for existing votes
   useEffect(() => {
     const initializePairs = async () => {
-      if (images.length !== 4) {
-        toast.error(`Need exactly 4 images to compare (found ${images.length})`);
+      if (images.length < 2) {
+        toast.error(`Need at least 2 images to compare (found ${images.length})`);
         setIsLoading(false);
         return;
       }

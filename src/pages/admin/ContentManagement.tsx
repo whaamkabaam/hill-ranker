@@ -310,8 +310,8 @@ export default function ContentManagement() {
                             {prompt.is_placeholder && (
                               <Badge variant="outline">Placeholder</Badge>
                             )}
-                            <Badge variant={imageCount === 4 ? "default" : "destructive"}>
-                              {imageCount}/4 Images
+                            <Badge variant={imageCount >= 2 ? "default" : "destructive"}>
+                              {imageCount} {imageCount === 1 ? 'Image' : 'Images'}
                             </Badge>
                           </div>
                           <p className="font-medium">{prompt.text}</p>
@@ -386,7 +386,7 @@ export default function ContentManagement() {
                         <option value="">Select a prompt...</option>
                         {prompts.map((prompt) => (
                           <option key={prompt.id} value={prompt.id}>
-                            {prompt.text} ({getImageCountForPrompt(prompt.id)}/4)
+                            {prompt.text} ({getImageCountForPrompt(prompt.id)} images)
                           </option>
                         ))}
                       </select>
@@ -427,7 +427,7 @@ export default function ContentManagement() {
                           <option value="">Select a prompt...</option>
                           {prompts.map((prompt) => (
                             <option key={prompt.id} value={prompt.id}>
-                              {prompt.text} ({getImageCountForPrompt(prompt.id)}/4)
+                              {prompt.text} ({getImageCountForPrompt(prompt.id)} images)
                             </option>
                           ))}
                         </select>
