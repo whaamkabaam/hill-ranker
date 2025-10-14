@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, TrendingUp, Award } from "lucide-react";
 import { format } from "date-fns";
+import { ImagePreviewModal } from "./ImagePreviewModal";
 
 interface Ranking {
   id: string;
@@ -42,6 +43,19 @@ export const ReviewRankings = ({ userId }: ReviewRankingsProps) => {
   const [prompts, setPrompts] = useState<Map<string, Prompt>>(new Map());
   const [images, setImages] = useState<Map<string, Image>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [previewModal, setPreviewModal] = useState<{
+    open: boolean;
+    imageUrl: string;
+    modelName: string;
+    allImages: { url: string; name: string }[];
+    currentIndex: number;
+  }>({
+    open: false,
+    imageUrl: '',
+    modelName: '',
+    allImages: [],
+    currentIndex: 0,
+  });
 
   useEffect(() => {
     loadRankings();
@@ -101,6 +115,34 @@ export const ReviewRankings = ({ userId }: ReviewRankingsProps) => {
     return "destructive";
   };
 
+  const handleImageClick = (
+    imageUrl: string,
+    modelName: string,
+    allRankingImages: { url: string; name: string }[],
+    clickedIndex: number
+  ) => {
+    setPreviewModal({
+      open: true,
+      imageUrl,
+      modelName,
+      allImages: allRankingImages,
+      currentIndex: clickedIndex,
+    });
+  };
+
+  const handleNavigate = (direction: 'prev' | 'next') => {
+    setPreviewModal(prev => {
+      const newIndex = direction === 'prev' ? prev.currentIndex - 1 : prev.currentIndex + 1;
+      const newImage = prev.allImages[newIndex];
+      return {
+        ...prev,
+        currentIndex: newIndex,
+        imageUrl: newImage.url,
+        modelName: newImage.name,
+      };
+    });
+  };
+
   if (loading) {
     return (
       <Card className="p-6">
@@ -128,6 +170,20 @@ export const ReviewRankings = ({ userId }: ReviewRankingsProps) => {
         const first = images.get(ranking.first_id);
         const second = images.get(ranking.second_id);
         const third = images.get(ranking.third_id);
+
+        // Prepare all images for this ranking for navigation
+        const rankingImages = [
+          { image: first, place: 1, rating: ranking.rating_first, emoji: "🥇", borderColor: "border-yellow-400", badgeClass: "bg-gradient-to-br from-yellow-400 to-yellow-600 text-white border-0" },
+          { image: second, place: 2, rating: ranking.rating_second, emoji: "🥈", borderColor: "border-gray-400", badgeClass: "bg-gradient-to-br from-gray-300 to-gray-500 text-white border-0" },
+          { image: third, place: 3, rating: ranking.rating_third, emoji: "🥉", borderColor: "border-orange-400", badgeClass: "bg-gradient-to-br from-orange-400 to-orange-600 text-white border-0" },
+        ];
+
+        const allImagesForPreview = rankingImages
+          .filter(r => r.image)
+          .map(r => ({
+            url: r.image!.image_url,
+            name: r.image!.model_name,
+          }));
 
         return (
           <Card key={ranking.id} className="p-6 space-y-4">
@@ -165,13 +221,12 @@ export const ReviewRankings = ({ userId }: ReviewRankingsProps) => {
 
             {/* Rankings Display */}
             <div className="grid grid-cols-3 gap-6">
-              {[
-                { image: first, rating: ranking.rating_first, place: 1, emoji: "🥇", borderColor: "border-yellow-400", badgeClass: "bg-gradient-to-br from-yellow-400 to-yellow-600 text-white border-0" },
-                { image: second, rating: ranking.rating_second, place: 2, emoji: "🥈", borderColor: "border-gray-400", badgeClass: "bg-gradient-to-br from-gray-300 to-gray-500 text-white border-0" },
-                { image: third, rating: ranking.rating_third, place: 3, emoji: "🥉", borderColor: "border-orange-400", badgeClass: "bg-gradient-to-br from-orange-400 to-orange-600 text-white border-0" },
-              ].map(({ image, rating, place, emoji, borderColor, badgeClass }) => (
+              {rankingImages.map(({ image, rating, place, emoji, borderColor, badgeClass }, index) => (
                 <div key={place} className="space-y-2">
-                  <div className={`relative aspect-square rounded-lg overflow-hidden bg-secondary border-4 ${borderColor} transition-transform hover:scale-105`}>
+                  <div 
+                    className={`relative aspect-square rounded-lg overflow-hidden bg-secondary border-4 ${borderColor} transition-transform hover:scale-105 cursor-pointer`}
+                    onClick={() => image && handleImageClick(image.image_url, image.model_name, allImagesForPreview, index)}
+                  >
                     {image && (
                       <img
                         src={image.image_url}
@@ -207,6 +262,17 @@ export const ReviewRankings = ({ userId }: ReviewRankingsProps) => {
           </Card>
         );
       })}
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        imageUrl={previewModal.imageUrl}
+        modelName={previewModal.modelName}
+        open={previewModal.open}
+        onOpenChange={(open) => setPreviewModal(prev => ({ ...prev, open }))}
+        allImages={previewModal.allImages}
+        currentIndex={previewModal.currentIndex}
+        onNavigate={handleNavigate}
+      />
     </div>
   );
 };

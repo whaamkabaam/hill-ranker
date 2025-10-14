@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, Trash2, Undo } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import ImageCardSkeleton from "./ImageCardSkeleton";
-import ProgressGamification from "./ProgressGamification";
 
 interface Image {
   id: string;
@@ -1143,12 +1142,6 @@ export const ComparisonView = ({
             <p className="text-sm text-muted-foreground mb-2">Current Prompt</p>
             <h2 className="text-xl font-medium">{promptText}</h2>
           </div>
-          
-          <ProgressGamification
-            completed={totalComparisons}
-            total={estimatedTotal}
-            showConfetti={!challenger && remainingImages.length === 0}
-          />
 
           {/* DEBUG: Show animation state */}
           {process.env.NODE_ENV === 'development' && (
