@@ -276,6 +276,7 @@ const resolveRankingsWithCycles = (
     h2hWins[img.id] = {};
   });
   
+  // Process votes and ensure all image IDs from votes are initialized
   votes.forEach(vote => {
     if (vote.is_tie || !vote.winner_id) return;
     
@@ -283,6 +284,14 @@ const resolveRankingsWithCycles = (
     const loserId = vote.left_image_id === winnerId 
       ? vote.right_image_id 
       : vote.left_image_id;
+    
+    // Ensure both winner and loser have entries in h2hWins
+    if (!h2hWins[winnerId]) {
+      h2hWins[winnerId] = {};
+    }
+    if (!h2hWins[loserId]) {
+      h2hWins[loserId] = {};
+    }
     
     if (!h2hWins[winnerId][loserId]) {
       h2hWins[winnerId][loserId] = 0;
@@ -681,6 +690,7 @@ export const ComparisonView = ({
         h2hWins[img.id] = {};
       });
       
+      // Process votes and ensure all image IDs from votes are initialized
       allVotes.forEach(vote => {
         if (vote.is_tie || !vote.winner_id) return;
         
@@ -688,6 +698,14 @@ export const ComparisonView = ({
         const loserId = vote.left_image_id === winnerId 
           ? vote.right_image_id 
           : vote.left_image_id;
+        
+        // Ensure both winner and loser have entries in h2hWins
+        if (!h2hWins[winnerId]) {
+          h2hWins[winnerId] = {};
+        }
+        if (!h2hWins[loserId]) {
+          h2hWins[loserId] = {};
+        }
         
         if (!h2hWins[winnerId][loserId]) {
           h2hWins[winnerId][loserId] = 0;
