@@ -247,6 +247,11 @@ export const ComparisonView = ({
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [currentPair]);
 
+  // Reset images loaded state when pair changes
+  useEffect(() => {
+    setImagesLoaded({ left: false, right: false });
+  }, [currentPairIndex]);
+
   const handleComparisonComplete = async () => {
     try {
       console.log('🏁 All comparisons complete, calculating Elo rankings...');
@@ -537,11 +542,6 @@ export const ComparisonView = ({
       </div>
     );
   }
-
-  // Reset images loaded state when pair changes
-  useEffect(() => {
-    setImagesLoaded({ left: false, right: false });
-  }, [currentPairIndex]);
 
   return (
     <div className="min-h-screen p-8">
