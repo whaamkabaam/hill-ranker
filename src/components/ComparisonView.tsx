@@ -1031,7 +1031,7 @@ export const ComparisonView = ({
             className={`flex-1 transition-all duration-300 ease-out ${
               animationState === 'right-wins-exit' ? 'translate-x-[-120%] opacity-0' : 
               animationState === 'right-wins-promote' ? 'translate-x-[-120%] opacity-0' :
-              animationState === 'right-wins-enter' ? 'translate-x-[-120%] opacity-0' :
+              animationState === 'right-wins-enter' ? 'translate-x-0 opacity-100' :
               'translate-x-0 opacity-100'
             }`}
           >
@@ -1052,12 +1052,12 @@ export const ComparisonView = ({
 
           {/* Challenger (Right Side) - Exits right when left wins, slides left when right wins */}
           <div 
-            className={`flex-1 transition-all duration-300 ease-out ${
-              animationState === 'left-wins' ? 'translate-x-[120%] opacity-0' :
-              animationState === 'right-wins-exit' ? 'translate-x-0 opacity-100' :
-              animationState === 'right-wins-promote' ? 'translate-x-[-100%] opacity-100' :
-              animationState === 'right-wins-enter' ? 'translate-x-[-100%] opacity-100' :
-              'translate-x-0 opacity-100'
+            className={`flex-1 ${
+              animationState === 'left-wins' ? 'transition-all duration-300 ease-out translate-x-[120%] opacity-0' :
+              animationState === 'right-wins-exit' ? 'transition-all duration-300 ease-out translate-x-0 opacity-100' :
+              animationState === 'right-wins-promote' ? 'transition-all duration-300 ease-out translate-x-[-100%] opacity-0' :
+              animationState === 'right-wins-enter' ? 'animate-slide-in-right' :
+              'transition-all duration-300 ease-out translate-x-0 opacity-100'
             }`}
           >
             {!imagesLoaded.right && (
