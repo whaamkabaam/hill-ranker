@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ImagePreviewModal } from "./ImagePreviewModal";
 
 interface ImageCardProps {
@@ -17,6 +17,13 @@ interface ImageCardProps {
 export const ImageCard = ({ imageUrl, modelName, side, isKing, onImageLoad, blindMode = false, allImages, currentIndex, onNavigate }: ImageCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Reset hover state when preview modal closes
+  useEffect(() => {
+    if (!showPreview) {
+      setIsHovered(false);
+    }
+  }, [showPreview]);
 
   const handleImageLoad = () => {
     console.log(`🖼️ ${side === "left" ? "Left" : "Right"} image loaded`);

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import hvLogo from "@/assets/hv-capital-logo.png";
 import { ArrowLeft, Home, BarChart3, History, Trophy, TrendingUp, Award, Grid3x3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -34,6 +35,7 @@ const ImageRanker = () => {
     user,
     signOut
   } = useAuth();
+  const { isAdmin } = useUserRole();
   const navigate = useNavigate();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
@@ -407,7 +409,7 @@ const ImageRanker = () => {
             </TabsContent>
 
             <TabsContent value="progress">
-              {!hasUserVoted ? <div className="flex flex-col items-center justify-center min-h-[500px] gap-6 p-8">
+              {!hasUserVoted && !isAdmin ? <div className="flex flex-col items-center justify-center min-h-[500px] gap-6 p-8">
                   <div className="text-center space-y-4 max-w-md">
                     <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                       <BarChart3 className="w-10 h-10 text-primary" />
