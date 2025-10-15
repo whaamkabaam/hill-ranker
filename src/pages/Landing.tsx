@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 import { ArrowRight, Sparkles, BarChart3, Users } from "lucide-react";
+import genpPeachLogo from "@/assets/genpeach-logo.jpg";
 import hvLogo from "@/assets/hv-capital-logo.png";
-import TeamMemberCarousel from "@/components/TeamMemberCarousel";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -39,9 +39,6 @@ const Landing = () => {
             <h1 className="text-xl font-bold">HVC.tools</h1>
           </div>
           
-          <div className="hidden lg:flex flex-1 justify-center max-w-3xl">
-            <TeamMemberCarousel />
-          </div>
           
           <Button onClick={() => navigate('/auth')} variant="outline" className="glass-hover">
             Sign In

@@ -220,10 +220,6 @@ export default function AdminPanel() {
               <FileText className="h-4 w-4" />
               Content Manager
             </Button>
-            <Button onClick={() => navigate('/admin/profile-images')} variant="outline" className="gap-2">
-              <Image className="h-4 w-4" />
-              Profile Images
-            </Button>
             <Button onClick={() => navigate('/admin/analytics')} className="gap-2">
               <BarChart3 className="h-4 w-4" />
               View Analytics
